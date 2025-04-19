@@ -14,6 +14,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Настройка для seed скрипта
+generator prisma_seed {
+  provider   = "prisma-client-js"
+  seedScript = "npm run prisma:seed"
+}
+
 // Модели для Next-Auth
 model Account {
   id                String  @id @default(cuid())
@@ -65,8 +71,7 @@ model VerificationToken {
 // Пользовательские типы
 enum UserRole {
   ADMIN
-  COACH
-  PLAYER
+  MANAGER
   USER
 }
 

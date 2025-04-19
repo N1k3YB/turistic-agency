@@ -3,8 +3,7 @@ import "next-auth";
 // Определяем тип UserRole напрямую, чтобы не зависеть от сгенерированного клиента
 enum UserRole {
   ADMIN = "ADMIN",
-  COACH = "COACH",
-  PLAYER = "PLAYER",
+  MANAGER = "MANAGER",
   USER = "USER"
 }
 

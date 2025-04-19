@@ -50,8 +50,7 @@ export type Destination = $Result.DefaultSelection<Prisma.$DestinationPayload>
 export namespace $Enums {
   export const UserRole: {
   ADMIN: 'ADMIN',
-  COACH: 'COACH',
-  PLAYER: 'PLAYER',
+  MANAGER: 'MANAGER',
   USER: 'USER'
 };
 

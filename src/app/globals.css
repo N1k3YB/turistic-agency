@@ -1,8 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8f9fa;
+  --foreground: #1a202c;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --accent: #0ea5e9;
+  --secondary: #10b981;
+  --tertiary: #f59e0b;
+  --success: #22c55e;
+  --error: #ef4444;
+  --gray-light: #e5e7eb;
+  --gray: #9ca3af;
+  --gray-dark: #4b5563;
 }
 
 @theme inline {
@@ -14,13 +24,47 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #f8f9fa;
+    --foreground: #a7a7a7;
+    --primary: #3b82f6;
+    --primary-hover: #60a5fa;
+    --accent: #38bdf8;
+    --secondary: #34d399;
+    --tertiary: #fbbf24;
+    --gray-light: #374151;
+    --gray: #6b7280;
+    --gray-dark: #9ca3af;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.6;
+}
+
+.hero-gradient {
+  background: linear-gradient(to right, var(--primary), var(--accent));
+}
+
+.card-hover-effect {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover-effect:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.1);
+}
+
+.text-shadow {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.hover-scale img {
+  transition: transform 0.5s ease;
+}
+
+.hover-scale:hover img {
+  transform: scale(1.05);
 }
