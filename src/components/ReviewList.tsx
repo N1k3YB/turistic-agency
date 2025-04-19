@@ -1,0 +1,161 @@
+import { useEffect, useState } from 'react';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
+import { StarIcon } from '@heroicons/react/24/solid';
+import { UserCircleIcon } from '@heroicons/react/24/outline';
+import Image from 'next/image';
+
+interface User {
+  name: string | null;
+  image: string | null;
+}
+
+interface Review {
+  id: number;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  user: User;
+}
+
+interface ReviewListProps {
+  tourId: number;
+  refreshTrigger?: number;
+}
+
+export default function ReviewList({ tourId, refreshTrigger = 0 }: ReviewListProps) {
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchReviews = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const response = await fetch(`/api/reviews?tourId=${tourId}`);
+        
+        if (!response.ok) {
+          throw new Error('Не удалось загрузить отзывы');
+        }
+        
+        const data = await response.json();
+        setReviews(data);
+      } catch (err: any) {
+        setError(err.message);
+        console.error('Ошибка при загрузке отзывов:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchReviews();
+  }, [tourId, refreshTrigger]);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg p-6 shadow-sm animate-pulse">
+        <div className="h-5 bg-gray-200 rounded w-1/3 mb-6"></div>
+        {[1, 2, 3].map((_, idx) => (
+          <div key={idx} className="mb-8">
+            <div className="flex items-center mb-3">
+              <div className="h-10 w-10 bg-gray-200 rounded-full mr-3"></div>
+              <div className="h-4 bg-gray-200 rounded w-24"></div>
+            </div>
+            <div className="h-4 bg-gray-200 rounded w-1/4 mb-3"></div>
+            <div className="h-3 bg-gray-200 rounded w-full mb-1"></div>
+            <div className="h-3 bg-gray-200 rounded w-full mb-1"></div>
+            <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 text-red-600 p-6 rounded-lg mb-8">
+        Не удалось загрузить отзывы: {error}
+      </div>
+    );
+  }
+
+  if (reviews.length === 0) {
+    return (
+      <div className="bg-white rounded-lg p-6 shadow-sm mb-8">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Отзывы</h3>
+        <p className="text-gray-600">У этого тура пока нет отзывов. Будьте первым, кто оставит свой отзыв!</p>
+      </div>
+    );
+  }
+
+  // Функция для расчета среднего рейтинга
+  const averageRating = (
+    reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+  ).toFixed(1);
+
+  return (
+    <div className="bg-white rounded-lg p-6 shadow-sm mb-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
+        <h3 className="text-lg font-medium text-gray-900">Отзывы ({reviews.length})</h3>
+        <div className="flex items-center mt-2 md:mt-0">
+          <div className="flex items-center">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <StarIcon
+                key={star}
+                className={`h-5 w-5 ${
+                  star <= Math.round(parseFloat(averageRating))
+                    ? 'text-yellow-400'
+                    : 'text-gray-300'
+                }`}
+              />
+            ))}
+          </div>
+          <span className="ml-2 text-gray-700 font-medium">{averageRating} из 5</span>
+        </div>
+      </div>
+
+      <div className="space-y-8">
+        {reviews.map((review) => (
+          <div key={review.id} className="border-b border-gray-100 pb-6 last:border-b-0 last:pb-0">
+            <div className="flex items-center mb-3">
+              {review.user.image ? (
+                <Image
+                  src={review.user.image}
+                  alt={review.user.name || 'Пользователь'}
+                  width={40}
+                  height={40}
+                  className="rounded-full mr-3"
+                />
+              ) : (
+                <UserCircleIcon className="h-10 w-10 text-gray-400 mr-3" />
+              )}
+              <div>
+                <div className="font-medium text-gray-800">
+                  {review.user.name || 'Пользователь'}
+                </div>
+                <div className="text-sm text-gray-500">
+                  {format(new Date(review.createdAt), 'd MMMM yyyy', { locale: ru })}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex mb-3">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <StarIcon
+                  key={star}
+                  className={`h-5 w-5 ${
+                    star <= review.rating ? 'text-yellow-400' : 'text-gray-300'
+                  }`}
+                />
+              ))}
+            </div>
+            
+            <p className="text-gray-700 whitespace-pre-line">{review.comment}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+} 

@@ -1,12 +1,11 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
+}
+
+generator prisma_seed {
+  provider   = "prisma-client-js"
+  seedScript = "npm run prisma:seed"
 }
 
 datasource db {
@@ -14,28 +13,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Настройка для seed скрипта
-generator prisma_seed {
-  provider = "prisma-client-js"
-  seedScript = "npm run prisma:seed"
-}
-
-// Модели для Next-Auth
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -49,15 +40,16 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
+  id             String    @id @default(cuid())
+  name           String?
+  email          String?   @unique
+  emailVerified  DateTime?
   hashedPassword String?
-  image         String?
-  role          UserRole  @default(USER)
-  accounts      Account[]
-  sessions      Session[]
+  image          String?
+  role           UserRole  @default(USER)
+  accounts       Account[]
+  sessions       Session[]
+  reviews        Review[]
 }
 
 model VerificationToken {
@@ -68,40 +60,52 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Пользовательские типы
-enum UserRole {
-  ADMIN
-  MANAGER
-  USER
-}
-
 model Tour {
-  id               Int      @id @default(autoincrement())
   title            String
-  slug             String   @unique
+  slug             String      @unique
   price            Decimal
   currency         String
   imageUrl         String
   shortDescription String
-  fullDescription  String
-  itinerary        String // Маршрут/программа
-  inclusions       String // Включено
-  exclusions       String // Не включено
-  imageUrls        String[] // Галерея изображений
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  id               Int         @id @default(autoincrement())
   destinationId    Int
+  exclusions       String
+  fullDescription  String
+  imageUrls        String[]
+  inclusions       String
+  itinerary        String
   destination      Destination @relation(fields: [destinationId], references: [id])
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  reviews          Review[]
 }
 
-// Модель для Направлений
 model Destination {
   id          Int      @id @default(autoincrement())
   name        String
   slug        String   @unique
   description String
   imageUrl    String
-  tours       Tour[] // Обратная связь
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  tours       Tour[]
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  rating     Int
+  comment    String
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tourId     Int
+  userId     String
+  tour       Tour     @relation(fields: [tourId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  MANAGER
 }

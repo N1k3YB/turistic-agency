@@ -13,7 +13,8 @@ import {
   ShoppingBagIcon, 
   PlusCircleIcon,
   PencilIcon,
-  TrashIcon
+  TrashIcon,
+  ChatBubbleLeftIcon
 } from "@heroicons/react/24/outline";
 
 export default function AdminDashboardPage() {
@@ -248,8 +249,8 @@ export default function AdminDashboardPage() {
       
       <div className="flex flex-col md:flex-row gap-6">
         {/* Боковое меню */}
-        <div className="md:w-64 flex-shrink-0">
-          <div className="bg-white rounded-lg shadow-md">
+        <div className="w-full md:w-64 mb-6 md:mb-0">
+          <div className="bg-white rounded-lg shadow">
             <div className="p-4 border-b">
               <div className="flex items-center">
                 <div className="bg-purple-100 p-2 rounded-full">
@@ -328,6 +329,14 @@ export default function AdminDashboardPage() {
                     <ShoppingBagIcon className="h-5 w-5 mr-3" />
                     Заказы
                   </button>
+                </li>
+                <li>
+                  <Link href="/admin/reviews"
+                    className={`w-full flex items-center p-3 rounded-md text-gray-700 hover:bg-gray-50`}
+                  >
+                    <ChatBubbleLeftIcon className="h-5 w-5 mr-2" />
+                    Модерация отзывов
+                  </Link>
                 </li>
               </ul>
             </nav>

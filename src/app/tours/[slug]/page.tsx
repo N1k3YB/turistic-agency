@@ -17,6 +17,8 @@ import {
   ChatBubbleLeftIcon,
   StarIcon
 } from '@heroicons/react/24/outline';
+import ReviewList from '@/components/ReviewList';
+import ReviewForm from '@/components/ReviewForm';
 
 // Обновленный интерфейс для тура, включая данные направления
 interface Tour {
@@ -52,7 +54,7 @@ export default function TourDetailPage() {
   const [tour, setTour] = useState<Tour | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'description' | 'itinerary' | 'inclusions' | 'gallery'>('description');
+  const [activeTab, setActiveTab] = useState<'description' | 'itinerary' | 'inclusions' | 'gallery' | 'reviews'>('description');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   useEffect(() => {
@@ -220,6 +222,12 @@ export default function TourDetailPage() {
             >
               Галерея
             </button>
+            <button 
+              onClick={() => setActiveTab('reviews')}
+              className={`px-6 py-4 whitespace-nowrap font-medium text-sm ${activeTab === 'reviews' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-blue-600'}`}
+            >
+              Отзывы
+            </button>
           </div>
         </div>
 
@@ -295,59 +303,12 @@ export default function TourDetailPage() {
               </div>
             )}
 
-            {/* Секция комментариев */}
-            <div className="bg-white p-6 rounded-xl shadow-md">
-              <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center">
-                <ChatBubbleLeftIcon className="h-6 w-6 mr-2 text-blue-600" />
-                Отзывы
-              </h2>
-              
+            {activeTab === 'reviews' && (
               <div className="space-y-6">
-                <div className="flex items-start space-x-4">
-                  <div className="bg-blue-100 h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-blue-600 font-medium">АМ</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center mb-1">
-                      <h3 className="font-medium text-gray-800">Анна Михайлова</h3>
-                      <div className="flex text-yellow-400">
-                        <StarIcon className="h-4 w-4 fill-current" />
-                        <StarIcon className="h-4 w-4 fill-current" />
-                        <StarIcon className="h-4 w-4 fill-current" />
-                        <StarIcon className="h-4 w-4 fill-current" />
-                        <StarIcon className="h-4 w-4 fill-current" />
-                      </div>
-                    </div>
-                    <p className="text-gray-600 text-sm">Отличный тур! Все было организовано на высшем уровне. Особенно понравилась программа и гид.</p>
-                    <p className="text-gray-400 text-xs mt-1">15 марта 2023</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start space-x-4">
-                  <div className="bg-green-100 h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-green-600 font-medium">ИК</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center mb-1">
-                      <h3 className="font-medium text-gray-800">Игорь Кузнецов</h3>
-                      <div className="flex text-yellow-400">
-                        <StarIcon className="h-4 w-4 fill-current" />
-                        <StarIcon className="h-4 w-4 fill-current" />
-                        <StarIcon className="h-4 w-4 fill-current" />
-                        <StarIcon className="h-4 w-4 fill-current" />
-                        <StarIcon className="h-4 w-4 text-gray-300" />
-                      </div>
-                    </div>
-                    <p className="text-gray-600 text-sm">Хороший тур за свои деньги, но есть некоторые замечания к организации трансфера.</p>
-                    <p className="text-gray-400 text-xs mt-1">2 февраля 2023</p>
-                  </div>
-                </div>
-                
-                <button className="w-full py-2 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
-                  Показать больше отзывов
-                </button>
+                <ReviewList tourId={tour.id} refreshTrigger={0} />
+                <ReviewForm tourId={tour.id} />
               </div>
-            </div>
+            )}
           </div>
 
           {/* Правая колонка: Цена, Заказ */}

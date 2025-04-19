@@ -156,21 +156,21 @@ exports.Prisma.VerificationTokenScalarFieldEnum = {
 };
 
 exports.Prisma.TourScalarFieldEnum = {
-  id: 'id',
   title: 'title',
   slug: 'slug',
   price: 'price',
   currency: 'currency',
   imageUrl: 'imageUrl',
   shortDescription: 'shortDescription',
-  fullDescription: 'fullDescription',
-  itinerary: 'itinerary',
-  inclusions: 'inclusions',
-  exclusions: 'exclusions',
-  imageUrls: 'imageUrls',
-  destinationId: 'destinationId',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  id: 'id',
+  destinationId: 'destinationId',
+  exclusions: 'exclusions',
+  fullDescription: 'fullDescription',
+  imageUrls: 'imageUrls',
+  inclusions: 'inclusions',
+  itinerary: 'itinerary'
 };
 
 exports.Prisma.DestinationScalarFieldEnum = {
@@ -181,6 +181,17 @@ exports.Prisma.DestinationScalarFieldEnum = {
   imageUrl: 'imageUrl',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
+};
+
+exports.Prisma.ReviewScalarFieldEnum = {
+  id: 'id',
+  rating: 'rating',
+  comment: 'comment',
+  isApproved: 'isApproved',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  tourId: 'tourId',
+  userId: 'userId'
 };
 
 exports.Prisma.SortOrder = {
@@ -199,8 +210,8 @@ exports.Prisma.NullsOrder = {
 };
 exports.UserRole = exports.$Enums.UserRole = {
   ADMIN: 'ADMIN',
-  MANAGER: 'MANAGER',
-  USER: 'USER'
+  USER: 'USER',
+  MANAGER: 'MANAGER'
 };
 
 exports.Prisma.ModelName = {
@@ -209,7 +220,8 @@ exports.Prisma.ModelName = {
   User: 'User',
   VerificationToken: 'VerificationToken',
   Tour: 'Tour',
-  Destination: 'Destination'
+  Destination: 'Destination',
+  Review: 'Review'
 };
 
 /**

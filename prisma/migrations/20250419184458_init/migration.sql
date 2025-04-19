@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'USER');
+CREATE TYPE "UserRole" AS ENUM ('ADMIN', 'USER', 'MANAGER');
 
 -- CreateTable
 CREATE TABLE "Account" (
@@ -51,17 +51,36 @@ CREATE TABLE "VerificationToken" (
 
 -- CreateTable
 CREATE TABLE "Tour" (
-    "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
-    "price" DECIMAL(10,2) NOT NULL,
+    "price" DECIMAL(65,30) NOT NULL,
     "currency" TEXT NOT NULL,
     "imageUrl" TEXT NOT NULL,
     "shortDescription" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "id" SERIAL NOT NULL,
+    "destinationId" INTEGER NOT NULL,
+    "exclusions" TEXT NOT NULL,
+    "fullDescription" TEXT NOT NULL,
+    "imageUrls" TEXT[],
+    "inclusions" TEXT NOT NULL,
+    "itinerary" TEXT NOT NULL,
 
     CONSTRAINT "Tour_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Destination" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "imageUrl" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Destination_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -82,8 +101,14 @@ CREATE UNIQUE INDEX "VerificationToken_identifier_token_key" ON "VerificationTok
 -- CreateIndex
 CREATE UNIQUE INDEX "Tour_slug_key" ON "Tour"("slug");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "Destination_slug_key" ON "Destination"("slug");
+
 -- AddForeignKey
 ALTER TABLE "Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Tour" ADD CONSTRAINT "Tour_destinationId_fkey" FOREIGN KEY ("destinationId") REFERENCES "Destination"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

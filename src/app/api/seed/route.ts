@@ -34,25 +34,25 @@ export async function GET() {
       },
     });
 
-    // Создаем тренера
-    const coachHashedPassword = await hash("coach12345", 10);
-    const coach = await prisma.user.create({
+    // Создаем менеджера
+    const managerHashedPassword = await hash("manager12345", 10);
+    const manager = await prisma.user.create({
       data: {
-        name: "Тренер",
-        email: "coach@example.com",
-        hashedPassword: coachHashedPassword,
-        role: "COACH",
+        name: "Менеджер",
+        email: "manager@example.com",
+        hashedPassword: managerHashedPassword,
+        role: "MANAGER",
       },
     });
 
-    // Создаем игрока
-    const playerHashedPassword = await hash("player12345", 10);
-    const player = await prisma.user.create({
+    // Создаем пользователя
+    const userHashedPassword = await hash("user12345", 10);
+    const user = await prisma.user.create({
       data: {
-        name: "Игрок",
-        email: "player@example.com",
-        hashedPassword: playerHashedPassword,
-        role: "PLAYER",
+        name: "Пользователь",
+        email: "user@example.com",
+        hashedPassword: userHashedPassword,
+        role: "USER",
       },
     });
 
@@ -66,16 +66,16 @@ export async function GET() {
           role: admin.role,
         },
         {
-          id: coach.id,
-          email: coach.email,
-          name: coach.name,
-          role: coach.role,
+          id: manager.id,
+          email: manager.email,
+          name: manager.name,
+          role: manager.role,
         },
         {
-          id: player.id,
-          email: player.email,
-          name: player.name,
-          role: player.role,
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
         },
       ],
     });

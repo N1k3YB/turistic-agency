@@ -28,7 +28,7 @@ export default function SignIn() {
       if (result?.error) {
         setError(result.error);
       } else {
-        router.push("/");
+        router.push("/profile");
       }
     } catch (error) {
       setError("Произошла ошибка при входе");
