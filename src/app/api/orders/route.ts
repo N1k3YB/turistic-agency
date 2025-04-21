@@ -70,43 +70,40 @@ export async function POST(request: Request) {
       return new NextResponse("Тур не найден", { status: 404 });
     }
 
-    // Получаем общее количество заказанных мест для этого тура
-    const orderedSeats = await prisma.order.aggregate({
-      where: {
-        tourId: parseInt(tourId),
-        status: {
-          in: ['PENDING', 'CONFIRMED']
-        }
-      },
-      _sum: {
-        quantity: true
-      }
-    });
-
-    const totalOrderedSeats = orderedSeats._sum.quantity || 0;
-    const availableSeats = tour.groupSize - totalOrderedSeats;
-
-    // Проверяем наличие свободных мест
-    if (availableSeats < quantity) {
+    // Вычисляем доступные места напрямую из таблицы туров
+    if (tour.availableSeats < quantity) {
       return new NextResponse(
-        `Недостаточно свободных мест. Доступно: ${availableSeats}`,
+        `Недостаточно свободных мест. Доступно: ${tour.availableSeats}`,
         { status: 400 }
       );
     }
 
-    // Создаем заказ
-    const order = await prisma.order.create({
-      data: {
-        userId: session.user.id,
-        tourId: parseInt(tourId),
-        quantity,
-        totalPrice: tour.price.mul(quantity),
-        contactEmail,
-        contactPhone,
-      },
+    // Используем транзакцию для обновления заказа и количества свободных мест
+    const result = await prisma.$transaction(async (tx) => {
+      // Создаем заказ
+      const order = await tx.order.create({
+        data: {
+          userId: session.user.id,
+          tourId: parseInt(tourId),
+          quantity,
+          totalPrice: tour.price.mul(quantity),
+          contactEmail,
+          contactPhone,
+        },
+      });
+
+      // Обновляем количество свободных мест в туре
+      await tx.tour.update({
+        where: { id: parseInt(tourId) },
+        data: {
+          availableSeats: tour.availableSeats - quantity
+        }
+      });
+
+      return order;
     });
 
-    return NextResponse.json(order);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("[ORDERS_POST]", error);
     return new NextResponse("Internal error", { status: 500 });

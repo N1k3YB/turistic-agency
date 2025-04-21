@@ -349,13 +349,13 @@ export default function ProfilePage() {
             )}
           </div>
           
-          {/* Раздел для администратора */}
+          {/* Раздел для администратора и менеджера */}
           {(session?.user?.role === 'ADMIN' || session?.user?.role === 'MANAGER') && (
             <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-blue-600">
               <h2 className="text-xl font-semibold mb-4">Панель управления</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Link
-                  href="/admin/orders"
+                  href={session?.user?.role === 'ADMIN' ? "/admin/orders" : "/manager/orders"}
                   className="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg flex items-center transition-colors"
                 >
                   <ShoppingCartIcon className="h-5 w-5 text-blue-600 mr-3" />
@@ -365,16 +365,29 @@ export default function ProfilePage() {
                   </div>
                 </Link>
                 
-                <Link
-                  href="/admin"
-                  className="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg flex items-center transition-colors"
-                >
-                  <UserIcon className="h-5 w-5 text-blue-600 mr-3" />
-                  <div>
-                    <p className="font-medium text-gray-800">Панель администратора</p>
-                    <p className="text-sm text-gray-500">Полный доступ к администрированию сайта</p>
-                  </div>
-                </Link>
+                {session?.user?.role === 'ADMIN' ? (
+                  <Link
+                    href="/admin"
+                    className="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg flex items-center transition-colors"
+                  >
+                    <UserIcon className="h-5 w-5 text-blue-600 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-800">Панель администратора</p>
+                      <p className="text-sm text-gray-500">Полный доступ к администрированию сайта</p>
+                    </div>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/manager"
+                    className="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg flex items-center transition-colors"
+                  >
+                    <UserIcon className="h-5 w-5 text-blue-600 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-800">Панель менеджера</p>
+                      <p className="text-sm text-gray-500">Управление турами и заказами</p>
+                    </div>
+                  </Link>
+                )}
               </div>
             </div>
           )}

@@ -215,6 +215,9 @@ export default function OrdersPage() {
                           {order.status === 'CONFIRMED' && 
                             <p>Ваш заказ подтвержден. Мы с вами свяжемся</p>
                           }
+                          {order.status === 'CANCELLED' && 
+                            <p className="text-red-600">Денежные средства вернутся на привязанный банковский счет в течение 3 рабочих дней. Приносим свои извинения.</p>
+                          }
                         </div>
                         <Link 
                           href={`/tours/${order.tour.title.toLowerCase().replace(/\s+/g, '-')}`} 

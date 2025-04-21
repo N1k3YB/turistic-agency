@@ -4,7 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
-// Схема валидации для создания/обновления тура
+// Схема валидации для обновления тура
 const tourSchema = z.object({
   title: z.string().min(3, { message: "Название должно содержать минимум 3 символа" })
     .max(100, { message: "Название не должно превышать 100 символов" }),
@@ -24,6 +24,7 @@ const tourSchema = z.object({
   destinationId: z.number().positive({ message: "Необходимо выбрать направление" }),
   duration: z.number().int().positive({ message: "Длительность тура должна быть положительным числом" }).default(7),
   groupSize: z.number().int().positive({ message: "Размер группы должен быть положительным числом" }).default(10),
+  availableSeats: z.number().int().positive({ message: "Количество доступных мест должно быть положительным числом" }).default(10),
   nextTourDate: z.string().refine(
     (val) => !val || !isNaN(Date.parse(val)), 
     { message: "Некорректная дата начала тура" }
@@ -38,6 +39,23 @@ export async function GET(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const session = await getServerSession(authOptions);
+  
+  // Проверка авторизации и роли менеджера
+  if (!session || !session.user) {
+    return NextResponse.json(
+      { error: 'Необходима авторизация' }, 
+      { status: 401 }
+    );
+  }
+  
+  if (session.user.role !== 'MANAGER' && session.user.role !== 'ADMIN') {
+    return NextResponse.json(
+      { error: 'Недостаточно прав' }, 
+      { status: 403 }
+    );
+  }
+  
   const id = parseInt(params.id);
   
   if (isNaN(id) || id <= 0) {
@@ -85,7 +103,7 @@ export async function PUT(
 ) {
   const session = await getServerSession(authOptions);
   
-  // Проверка авторизации и роли администратора
+  // Проверка авторизации и роли менеджера
   if (!session || !session.user) {
     return NextResponse.json(
       { error: 'Необходима авторизация' }, 
@@ -93,7 +111,7 @@ export async function PUT(
     );
   }
   
-  if (session.user.role !== 'ADMIN') {
+  if (session.user.role !== 'MANAGER' && session.user.role !== 'ADMIN') {
     return NextResponse.json(
       { error: 'Недостаточно прав' }, 
       { status: 403 }
@@ -158,7 +176,7 @@ export async function PUT(
     const { 
       title, slug, price, currency, imageUrl, shortDescription, 
       fullDescription, inclusions, exclusions, itinerary, 
-      imageUrls, destinationId, duration, groupSize, nextTourDate
+      imageUrls, destinationId, duration, groupSize, availableSeats, nextTourDate
     } = validationResult.data;
     
     // Проверка существования направления
@@ -208,6 +226,7 @@ export async function PUT(
         destinationId,
         duration,
         groupSize,
+        availableSeats,
         nextTourDate: nextTourDate ? new Date(nextTourDate) : null,
       }
     });
@@ -241,7 +260,7 @@ export async function DELETE(
 ) {
   const session = await getServerSession(authOptions);
   
-  // Проверка авторизации и роли администратора
+  // Проверка авторизации и роли менеджера
   if (!session || !session.user) {
     return NextResponse.json(
       { error: 'Необходима авторизация' }, 
@@ -249,7 +268,7 @@ export async function DELETE(
     );
   }
   
-  if (session.user.role !== 'ADMIN') {
+  if (session.user.role !== 'MANAGER' && session.user.role !== 'ADMIN') {
     return NextResponse.json(
       { error: 'Недостаточно прав' }, 
       { status: 403 }

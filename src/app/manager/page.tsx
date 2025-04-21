@@ -188,44 +188,51 @@ export default function ManagerDashboardPage() {
                   </div>
                 </div>
                 <div className="mt-4">
-                  <button 
+                  <Link 
+                    href="/manager/orders"
                     className="w-full flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                    onClick={() => setActiveTab("orders")}
                   >
                     Просмотреть все заказы
-                  </button>
+                  </Link>
                 </div>
               </div>
               
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold mb-4">Последние запросы</h3>
-                {mockRequests.slice(0, 2).map((request) => (
-                  <div key={request.id} className="mb-4 p-3 border rounded-md hover:bg-gray-50">
-                    <div className="flex justify-between">
-                      <p className="font-medium">{request.name}</p>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        request.status === "Новый" 
-                          ? "bg-red-100 text-red-800" 
-                          : request.status === "В обработке"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-green-100 text-green-800"
-                      }`}>
-                        {request.status}
-                      </span>
+                <h3 className="text-lg font-semibold mb-4">Быстрые действия</h3>
+                <div className="space-y-3">
+                  <Link 
+                    href="/manager/orders"
+                    className="w-full flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <ShoppingBagIcon className="h-5 w-5 text-blue-600 mr-2" />
+                      <span className="text-gray-700">Управление заказами</span>
                     </div>
-                    <p className="text-sm text-gray-500 truncate">{request.message}</p>
-                    <div className="flex mt-2 text-xs text-gray-500">
-                      <p>{request.date}</p>
-                      <p className="ml-2">{request.phone}</p>
+                    <span className="text-blue-600">→</span>
+                  </Link>
+                  
+                  <Link 
+                    href="/manager/tours"
+                    className="w-full flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <GlobeAltIcon className="h-5 w-5 text-indigo-600 mr-2" />
+                      <span className="text-gray-700">Управление турами</span>
                     </div>
-                  </div>
-                ))}
-                <button 
-                  className="w-full flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                  onClick={() => setActiveTab("requests")}
-                >
-                  Все запросы
-                </button>
+                    <span className="text-blue-600">→</span>
+                  </Link>
+                  
+                  <Link 
+                    href="/manager/destinations"
+                    className="w-full flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-md transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <MapIcon className="h-5 w-5 text-green-600 mr-2" />
+                      <span className="text-gray-700">Управление направлениями</span>
+                    </div>
+                    <span className="text-blue-600">→</span>
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
@@ -234,14 +241,22 @@ export default function ManagerDashboardPage() {
       case "orders":
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-800">Управление заказами</h2>
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-800">Управление заказами</h2>
+              <Link
+                href="/manager/orders"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Перейти в раздел заказов
+              </Link>
+            </div>
             
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-white shadow rounded-lg overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">№ Заказа</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Клиент</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Контакт</th>
@@ -255,7 +270,7 @@ export default function ManagerDashboardPage() {
                     {mockOrders.map((order) => (
                       <tr key={order.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                          <Link href={`#order-${order.id}`}>{order.id}</Link>
+                          <Link href={`/manager/orders#order-${order.id}`}>{order.id}</Link>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{order.date}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{order.client}</td>
@@ -343,6 +358,36 @@ export default function ManagerDashboardPage() {
           </div>
         );
       
+      case "destinations":
+        return (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-800">Управление направлениями</h2>
+              <Link
+                href="/manager/destinations"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Перейти в раздел направлений
+              </Link>
+            </div>
+          </div>
+        );
+
+      case "tours":
+        return (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-800">Управление турами</h2>
+              <Link
+                href="/manager/tours"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Перейти в раздел туров
+              </Link>
+            </div>
+          </div>
+        );
+      
       default:
         return (
           <div className="text-center py-12">
@@ -389,17 +434,13 @@ export default function ManagerDashboardPage() {
                   </button>
                 </li>
                 <li>
-                  <button 
-                    className={`w-full flex items-center px-4 py-2 rounded-md text-left ${
-                      activeTab === "orders" 
-                        ? "bg-blue-100 text-blue-700" 
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setActiveTab("orders")}
+                  <Link 
+                    href="/manager/orders"
+                    className="w-full flex items-center px-4 py-2 rounded-md text-left text-gray-700 hover:bg-gray-100"
                   >
                     <ShoppingBagIcon className="h-5 w-5 mr-3" />
                     Заказы
-                  </button>
+                  </Link>
                 </li>
                 <li>
                   <button 
@@ -415,30 +456,22 @@ export default function ManagerDashboardPage() {
                   </button>
                 </li>
                 <li>
-                  <button 
-                    className={`w-full flex items-center px-4 py-2 rounded-md text-left ${
-                      activeTab === "destinations" 
-                        ? "bg-blue-100 text-blue-700" 
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setActiveTab("destinations")}
+                  <Link 
+                    href="/manager/destinations"
+                    className="w-full flex items-center px-4 py-2 rounded-md text-left text-gray-700 hover:bg-gray-100"
                   >
                     <MapIcon className="h-5 w-5 mr-3" />
                     Направления
-                  </button>
+                  </Link>
                 </li>
                 <li>
-                  <button 
-                    className={`w-full flex items-center px-4 py-2 rounded-md text-left ${
-                      activeTab === "tours" 
-                        ? "bg-blue-100 text-blue-700" 
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setActiveTab("tours")}
+                  <Link 
+                    href="/manager/tours"
+                    className="w-full flex items-center px-4 py-2 rounded-md text-left text-gray-700 hover:bg-gray-100"
                   >
                     <GlobeAltIcon className="h-5 w-5 mr-3" />
                     Туры
-                  </button>
+                  </Link>
                 </li>
               </ul>
             </nav>
@@ -447,7 +480,9 @@ export default function ManagerDashboardPage() {
         
         {/* Основной контент */}
         <div className="flex-1 overflow-auto">
-          {renderTabContent()}
+          <div className="bg-white rounded-lg shadow p-6">
+            {renderTabContent()}
+          </div>
         </div>
       </div>
     </div>

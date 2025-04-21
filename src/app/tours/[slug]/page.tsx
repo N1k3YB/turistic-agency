@@ -521,7 +521,7 @@ export default function TourDetailPage() {
                       className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-colors mb-3"
                     >
                       <ShoppingCartIcon className="h-5 w-5 mr-2" />
-                      Перейти к заказу
+                      Перейти к заказам
                     </Link>
                   ) : (
                     <button 
