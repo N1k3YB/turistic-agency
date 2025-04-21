@@ -39,6 +39,13 @@ export async function GET(req: Request) {
     const destinations = await prisma.destination.findMany({
       orderBy: {
         name: 'asc'
+      },
+      include: {
+        _count: {
+          select: {
+            tours: true
+          }
+        }
       }
     });
     

@@ -13,6 +13,8 @@ const createUserSchema = z.object({
   role: z.enum(['USER', 'MANAGER', 'ADMIN'], { 
     errorMap: () => ({ message: "Выберите одну из доступных ролей: USER, MANAGER, ADMIN" })
   }),
+  phone: z.string().optional(),
+  address: z.string().optional(),
 });
 
 // GET запрос для получения списка пользователей
@@ -72,6 +74,9 @@ export async function GET(req: Request) {
         image: true,
         role: true,
         emailVerified: true,
+        phone: true,
+        address: true,
+        createdAt: true,
         _count: {
           select: {
             reviews: true,
@@ -148,6 +153,14 @@ export async function POST(req: Request) {
         errorMessages.push(formattedErrors.role._errors[0]);
       }
       
+      if (formattedErrors.phone?._errors) {
+        errorMessages.push(formattedErrors.phone._errors[0]);
+      }
+      
+      if (formattedErrors.address?._errors) {
+        errorMessages.push(formattedErrors.address._errors[0]);
+      }
+      
       return NextResponse.json(
         { 
           error: errorMessages.length > 0 
@@ -159,7 +172,7 @@ export async function POST(req: Request) {
       );
     }
     
-    const { name, email, password, role } = validationResult.data;
+    const { name, email, password, role, phone, address } = validationResult.data;
     
     // Проверка, существует ли пользователь с таким email
     const existingUser = await prisma.user.findUnique({
@@ -183,6 +196,8 @@ export async function POST(req: Request) {
         email,
         hashedPassword,
         role,
+        phone,
+        address,
       }
     });
     

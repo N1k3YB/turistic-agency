@@ -104,6 +104,7 @@ export async function GET(req: Request) {
         _count: {
           select: {
             orders: true,
+            reviews: true
           }
         }
       },

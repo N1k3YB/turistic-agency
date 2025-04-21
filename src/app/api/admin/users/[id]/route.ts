@@ -13,6 +13,8 @@ const updateUserSchema = z.object({
   role: z.enum(['USER', 'MANAGER', 'ADMIN'], { 
     errorMap: () => ({ message: "Выберите одну из доступных ролей: USER, MANAGER, ADMIN" })
   }),
+  phone: z.string().optional(),
+  address: z.string().optional(),
 });
 
 // PUT запрос для обновления пользователя
@@ -72,6 +74,14 @@ export async function PUT(
         errorMessages.push(formattedErrors.role._errors[0]);
       }
       
+      if (formattedErrors.phone?._errors) {
+        errorMessages.push(formattedErrors.phone._errors[0]);
+      }
+      
+      if (formattedErrors.address?._errors) {
+        errorMessages.push(formattedErrors.address._errors[0]);
+      }
+      
       return NextResponse.json(
         { 
           error: errorMessages.length > 0 
@@ -83,7 +93,7 @@ export async function PUT(
       );
     }
     
-    const { name, email, password, role } = validationResult.data;
+    const { name, email, password, role, phone, address } = validationResult.data;
     
     // Проверка существования пользователя
     const existingUser = await prisma.user.findUnique({
@@ -116,6 +126,8 @@ export async function PUT(
       name,
       email,
       role,
+      phone,
+      address
     };
     
     // Обновляем пароль только если он предоставлен

@@ -11,6 +11,8 @@ interface UserModalProps {
     name?: string;
     email?: string;
     role?: UserRole;
+    phone?: string;
+    address?: string;
     error?: string;
   } | null;
   onSave: (userData: {
@@ -19,6 +21,8 @@ interface UserModalProps {
     email: string;
     password?: string;
     role: UserRole;
+    phone?: string;
+    address?: string;
   }) => void;
 }
 
@@ -27,6 +31,8 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.USER);
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   // Сбрасываем форму при открытии/закрытии или изменении пользователя
@@ -36,6 +42,8 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
       setEmail(user.email || '');
       setPassword('');
       setRole(user.role || UserRole.USER);
+      setPhone(user.phone || '');
+      setAddress(user.address || '');
       
       // Устанавливаем ошибку из пропсов, если она есть
       if (user.error) {
@@ -48,6 +56,8 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
       setEmail('');
       setPassword('');
       setRole(UserRole.USER);
+      setPhone('');
+      setAddress('');
       setErrors({});
     }
   }, [user, isOpen]);
@@ -127,42 +137,45 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
     return '';
   };
   
-  // Обработчики изменения с валидацией
+  // Обработчики изменения полей
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value;
-    setName(newName);
-    
-    const nameError = validateName(newName);
-    setErrors(prev => ({
-      ...prev,
-      name: nameError
-    }));
+    const value = e.target.value;
+    setName(value);
+    setErrors((prev) => ({ ...prev, name: validateName(value) }));
   };
   
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newEmail = e.target.value;
-    setEmail(newEmail);
-    
-    const emailError = validateEmail(newEmail);
-    setErrors(prev => ({
-      ...prev,
-      email: emailError
-    }));
+    const value = e.target.value;
+    setEmail(value);
+    setErrors((prev) => ({ ...prev, email: validateEmail(value) }));
   };
   
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newPassword = e.target.value;
-    setPassword(newPassword);
-    
-    const passwordError = validatePassword(newPassword);
-    setErrors(prev => ({
-      ...prev,
-      password: passwordError
-    }));
+    const value = e.target.value;
+    setPassword(value);
+    // Валидируем пароль только если он не пустой или если это новый пользователь
+    if (value.length > 0 || !user?.id) {
+      setErrors((prev) => ({ ...prev, password: validatePassword(value) }));
+    } else {
+      // Если пароль пустой и это существующий пользователь, убираем ошибку
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.password;
+        return newErrors;
+      });
+    }
   };
   
   const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setRole(e.target.value as UserRole);
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhone(e.target.value);
+  };
+
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAddress(e.target.value);
   };
   
   const handleSubmit = (e: React.FormEvent) => {
@@ -197,7 +210,9 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
       name: name.trim(),
       email: email.trim(),
       role,
-      ...(password && { password: password.trim() })
+      ...(password && { password: password.trim() }),
+      phone: phone.trim(),
+      address: address.trim()
     };
     
     onSave(userData);
@@ -329,6 +344,32 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
                     {errors.role && (
                       <p className="mt-1 text-sm text-red-600">{errors.role}</p>
                     )}
+                  </div>
+                  
+                  <div className="mb-4">
+                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                      Телефон
+                    </label>
+                    <input
+                      type="tel"
+                      id="phone"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                      value={phone}
+                      onChange={handlePhoneChange}
+                    />
+                  </div>
+
+                  <div className="mb-4">
+                    <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+                      Адрес
+                    </label>
+                    <input
+                      type="text"
+                      id="address"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                      value={address}
+                      onChange={handleAddressChange}
+                    />
                   </div>
                   
                   <div className="flex justify-end space-x-3">

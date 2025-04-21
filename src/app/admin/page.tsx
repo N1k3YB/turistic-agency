@@ -21,15 +21,18 @@ export default function AdminDashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
-  
-  const mockStatistics = {
-    users: 350,
-    orders: 1280,
-    destinations: 15,
-    tours: 48,
-    revenue: "5 420 000 ₽",
-    averageOrderValue: "42 345 ₽",
-  };
+  const [loading, setLoading] = useState(true);
+  const [statistics, setStatistics] = useState({
+    users: 0,
+    orders: 0,
+    destinations: 0,
+    tours: 0,
+    revenue: 0,
+    averageOrderValue: 0,
+    newOrdersLastMonth: 0,
+    cancelledOrders: 0,
+    cancelledOrdersPercentage: "0"
+  });
 
   useEffect(() => {
     // Проверяем, что пользователь авторизован и имеет роль ADMIN
@@ -37,10 +40,32 @@ export default function AdminDashboardPage() {
       router.push("/auth/signin");
     } else if (status === "authenticated" && session.user.role !== "ADMIN") {
       router.push("/profile");
+    } else if (status === "authenticated" && session.user.role === "ADMIN") {
+      // Загружаем статистику с сервера
+      fetchStatistics();
     }
   }, [session, status, router]);
 
-  if (status === "loading") {
+  // Функция для загрузки статистики
+  const fetchStatistics = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/statistics');
+      
+      if (!response.ok) {
+        throw new Error('Ошибка при получении статистики');
+      }
+      
+      const data = await response.json();
+      setStatistics(data);
+    } catch (error) {
+      console.error('Ошибка при загрузке статистики:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (status === "loading" || loading) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -52,6 +77,15 @@ export default function AdminDashboardPage() {
   if (status === "authenticated" && session.user.role !== "ADMIN") {
     return null;
   }
+
+  // Форматирование валюты
+  const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('ru-RU', { 
+      style: 'currency', 
+      currency: 'RUB',
+      maximumFractionDigits: 0 
+    }).format(value);
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -68,7 +102,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-semibold">Пользователи</h3>
-                    <p className="text-3xl font-bold">{mockStatistics.users}</p>
+                    <p className="text-3xl font-bold">{statistics.users}</p>
                   </div>
                 </div>
               </div>
@@ -80,7 +114,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-semibold">Заказы</h3>
-                    <p className="text-3xl font-bold">{mockStatistics.orders}</p>
+                    <p className="text-3xl font-bold">{statistics.orders}</p>
                   </div>
                 </div>
               </div>
@@ -92,7 +126,7 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-lg font-semibold">Выручка</h3>
-                    <p className="text-3xl font-bold">{mockStatistics.revenue}</p>
+                    <p className="text-3xl font-bold">{formatCurrency(statistics.revenue)}</p>
                   </div>
                 </div>
               </div>
@@ -107,14 +141,14 @@ export default function AdminDashboardPage() {
                       <MapIcon className="h-5 w-5 text-gray-500 mr-2" />
                       <p className="text-gray-600">Направления</p>
                     </div>
-                    <p className="text-2xl font-bold">{mockStatistics.destinations}</p>
+                    <p className="text-2xl font-bold">{statistics.destinations}</p>
                   </div>
                   <div>
                     <div className="flex items-center">
                       <GlobeAltIcon className="h-5 w-5 text-gray-500 mr-2" />
                       <p className="text-gray-600">Туры</p>
                     </div>
-                    <p className="text-2xl font-bold">{mockStatistics.tours}</p>
+                    <p className="text-2xl font-bold">{statistics.tours}</p>
                   </div>
                 </div>
                 <div className="flex space-x-2">
@@ -140,15 +174,15 @@ export default function AdminDashboardPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <p className="text-gray-600">Средний чек</p>
-                    <p className="text-xl font-semibold">{mockStatistics.averageOrderValue}</p>
+                    <p className="text-xl font-semibold">{formatCurrency(statistics.averageOrderValue)}</p>
                   </div>
                   <div className="flex justify-between items-center">
                     <p className="text-gray-600">Новых заказов (за месяц)</p>
-                    <p className="text-xl font-semibold">124</p>
+                    <p className="text-xl font-semibold">{statistics.newOrdersLastMonth}</p>
                   </div>
                   <div className="flex justify-between items-center">
                     <p className="text-gray-600">Отмененные заказы</p>
-                    <p className="text-xl font-semibold">12 (0.9%)</p>
+                    <p className="text-xl font-semibold">{statistics.cancelledOrders} ({statistics.cancelledOrdersPercentage}%)</p>
                   </div>
                 </div>
                 <div className="mt-4">
@@ -262,7 +296,9 @@ export default function AdminDashboardPage() {
         
         {/* Основной контент */}
         <div className="flex-1 overflow-auto">
-          {renderTabContent()}
+          <div className="bg-white rounded-lg shadow p-6">
+            {renderTabContent()}
+          </div>
         </div>
       </div>
     </div>

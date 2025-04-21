@@ -2,17 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   PlusIcon, 
   PencilIcon, 
   TrashIcon, 
   ArrowLeftIcon,
-  ExclamationCircleIcon
+  ExclamationCircleIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 import ImageWithFallback from '@/components/ImageWithFallback';
 import toast from 'react-hot-toast';
+
 
 interface Tour {
   id: number;
@@ -28,6 +30,7 @@ interface Tour {
   nextTourDate: string | null;
   destination: {
     name: string;
+    slug: string;
   };
   orders?: {
     id: number;
@@ -36,18 +39,48 @@ interface Tour {
   }[];
   _count?: {
     orders: number;
+    reviews: number;
   };
 }
 
 export default function ManagerToursPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [tours, setTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [tourToDelete, setTourToDelete] = useState<Tour | null>(null);
   const [processingDelete, setProcessingDelete] = useState<boolean>(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalTours, setTotalTours] = useState(0);
+  const [search, setSearch] = useState('');
+  const [destinationFilter, setDestinationFilter] = useState<number | null>(null);
+  const [destinations, setDestinations] = useState<{id: number, name: string}[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Получаем параметр фильтрации по направлению из URL
+  useEffect(() => {
+    const destinationId = searchParams?.get('destinationId');
+    if (destinationId) {
+      const id = parseInt(destinationId);
+      if (!isNaN(id) && id > 0) {
+        setDestinationFilter(id);
+        // Также сбрасываем на первую страницу при изменении направления
+        setPage(1);
+      } else {
+        setDestinationFilter(null);
+      }
+    } else {
+      setDestinationFilter(null);
+    }
+    
+    // Устанавливаем флаг инициализации, чтобы запустить загрузку данных
+    setIsInitialized(true);
+  }, [searchParams]);
 
   useEffect(() => {
     // Если пользователь не авторизован, перенаправляем на страницу входа
@@ -64,15 +97,66 @@ export default function ManagerToursPage() {
         return;
       }
 
-      // Загружаем туры
-      fetchTours();
+      // Загружаем направления
+      fetchDestinations();
     }
   }, [status, session, router]);
 
+  // Загрузка списка направлений для фильтрации
+  const fetchDestinations = async () => {
+    try {
+      const response = await fetch('/api/manager/destinations');
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить направления');
+      }
+      
+      const data = await response.json();
+      if (data && Array.isArray(data)) {
+        setDestinations(data.map((dest: any) => ({
+          id: dest.id,
+          name: dest.name
+        })));
+      } else if (data.destinations && Array.isArray(data.destinations)) {
+        setDestinations(data.destinations.map((dest: any) => ({
+          id: dest.id,
+          name: dest.name
+        })));
+      }
+    } catch (error) {
+      console.error("Ошибка при загрузке направлений:", error);
+    }
+  };
+
+  // Обработчик изменения фильтра направления
+  const handleDestinationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    const id = value ? parseInt(value) : null;
+    
+    // Обновляем URL с параметром destinationId
+    const url = new URL(window.location.href);
+    if (id) {
+      url.searchParams.set('destinationId', id.toString());
+    } else {
+      url.searchParams.delete('destinationId');
+    }
+    router.push(url.pathname + url.search);
+    
+    setDestinationFilter(id);
+    setPage(1); // Сбрасываем на первую страницу
+  };
+
   const fetchTours = async () => {
+    if (!isInitialized) return;
+    
     try {
       setLoading(true);
-      const response = await fetch('/api/manager/tours');
+      
+      // Формируем URL с параметрами
+      let url = `/api/manager/tours?page=${page}&limit=10`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (destinationFilter) url += `&destinationId=${destinationFilter}`;
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error('Не удалось загрузить туры');
@@ -85,6 +169,10 @@ export default function ManagerToursPage() {
         // Если это объект с полем tours или другим массивом
         if (Array.isArray(data.tours)) {
           setTours(data.tours as Tour[]);
+          if (data.pagination) {
+            setTotalPages(data.pagination.totalPages);
+            setTotalTours(data.pagination.totalTours);
+          }
         } 
         // Если это объект с полем data, содержащим массив
         else if (Array.isArray(data.data)) {
@@ -109,11 +197,30 @@ export default function ManagerToursPage() {
       } else {
         setTours([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Ошибка при загрузке туров:", error);
-      setError('Произошла ошибка при загрузке туров');
+      setError(error.message || 'Произошла ошибка при загрузке туров');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Загружаем туры при изменении параметров
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user.role === 'MANAGER' && isInitialized) {
+      fetchTours();
+    }
+  }, [page, search, destinationFilter, status, session, isInitialized]);
+
+  // Функции для поиска и пагинации
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+    setPage(1); // Сбрасываем на первую страницу
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage > 0 && newPage <= totalPages) {
+      setPage(newPage);
     }
   };
 
@@ -179,14 +286,44 @@ export default function ManagerToursPage() {
               Вернуться в панель менеджера
             </Link>
             <h1 className="text-3xl font-bold text-gray-800">Управление турами</h1>
+            <p className="text-gray-600 mt-1">Всего туров: {totalTours}</p>
           </div>
-          <button
-            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center transition-colors"
-            onClick={() => router.push('/manager/tours/create')}
-          >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Добавить тур
-          </button>
+          <div className="flex gap-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Поиск туров..."
+                value={search}
+                onChange={handleSearchChange}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full"
+              />
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-2.5" />
+            </div>
+            <div className="relative">
+              <select
+                value={destinationFilter?.toString() || ''}
+                onChange={handleDestinationChange}
+                className="pl-4 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 appearance-none"
+              >
+                <option value="">Все направления</option>
+                {destinations.map(dest => (
+                  <option key={dest.id} value={dest.id}>{dest.name}</option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
+              </div>
+            </div>
+            <button
+              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center transition-colors"
+              onClick={() => router.push('/manager/tours/create')}
+            >
+              <PlusIcon className="h-5 w-5 mr-2" />
+              Добавить тур
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -264,13 +401,8 @@ export default function ManagerToursPage() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-gray-500">
-                        <span className="font-medium">
-                          {tour._count?.orders || 0} {tour._count?.orders === 1 ? 'заказ' : tour._count?.orders && tour._count?.orders < 5 ? 'заказа' : 'заказов'}
-                        </span>
-                      </div>
-                      <div className="flex space-x-2">
+                    <div className="flex flex-wrap justify-between items-center gap-3">
+                      <div className="flex gap-2">
                         <Link
                           href={`/tours/${tour.slug}`}
                           className="text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 py-2 px-3 rounded-md text-sm transition-colors"
@@ -295,11 +427,64 @@ export default function ManagerToursPage() {
                           Удалить
                         </button>
                       </div>
+                      <div className="flex space-x-2 text-sm text-gray-600">
+                        <span className="flex items-center">
+                          <span className="bg-blue-100 text-blue-800 py-1 px-2 rounded-full text-xs">
+                            {tour._count?.reviews || 0} отзыв(ов)
+                          </span>
+                        </span>
+                        <span className="flex items-center">
+                          <span className="bg-green-100 text-green-800 py-1 px-2 rounded-full text-xs">
+                            {tour._count?.orders || 0} заказ(ов)
+                          </span>
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        
+        {/* Пагинация */}
+        {totalPages > 1 && (
+          <div className="flex justify-center mt-6 gap-2">
+            <button
+              onClick={() => handlePageChange(page - 1)}
+              disabled={page === 1}
+              className={`px-4 py-2 rounded-md ${
+                page === 1
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Назад
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                onClick={() => handlePageChange(p)}
+                className={`px-4 py-2 rounded-md ${
+                  p === page
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              onClick={() => handlePageChange(page + 1)}
+              disabled={page === totalPages}
+              className={`px-4 py-2 rounded-md ${
+                page === totalPages
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Вперед
+            </button>
           </div>
         )}
       </div>

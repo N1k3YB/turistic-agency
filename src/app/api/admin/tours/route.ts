@@ -76,6 +76,10 @@ export async function GET(req: Request) {
         currency: true,
         imageUrl: true,
         shortDescription: true,
+        duration: true,
+        groupSize: true,
+        availableSeats: true,
+        nextTourDate: true,
         createdAt: true,
         updatedAt: true,
         destinationId: true,
@@ -88,6 +92,7 @@ export async function GET(req: Request) {
         _count: {
           select: {
             reviews: true,
+            orders: true,
           }
         }
       },

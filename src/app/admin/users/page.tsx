@@ -24,6 +24,9 @@ interface User {
   image: string | null;
   role: UserRole;
   emailVerified: string | null;
+  phone: string | null;
+  address: string | null;
+  createdAt: string | null;
   _count: {
     reviews: number;
   };
@@ -61,6 +64,8 @@ export default function AdminUsersPage() {
     name?: string;
     email?: string;
     role?: UserRole;
+    phone?: string;
+    address?: string;
     error?: string;
   } | null>(null);
   
@@ -132,7 +137,9 @@ export default function AdminUsersPage() {
         id: user.id,
         name: user.name || '',
         email: user.email || '',
-        role: user.role
+        role: user.role,
+        phone: user.phone || '',
+        address: user.address || ''
       });
       setShowUserModal(true);
     }
@@ -304,8 +311,10 @@ export default function AdminUsersPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Имя</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Телефон</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Роль</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Подтверждение</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата регистрации</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Отзывы</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
               </tr>
@@ -351,6 +360,9 @@ export default function AdminUsersPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {user.email}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.phone || '-'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         user.role === "ADMIN" ? "bg-purple-100 text-purple-800" : 
@@ -363,6 +375,9 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {user.emailVerified ? 'Подтвержден' : 'Не подтвержден'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {user._count.reviews}

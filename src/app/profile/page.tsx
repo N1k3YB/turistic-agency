@@ -3,9 +3,10 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, CalendarIcon, LockClosedIcon, ShoppingCartIcon, HeartIcon } from "@heroicons/react/24/outline";
+import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, CalendarIcon, LockClosedIcon, ShoppingCartIcon, HeartIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import ImageWithFallback from "@/components/ImageWithFallback";
+import { toast } from "react-hot-toast";
 
 // Интерфейсы для данных
 interface Order {
@@ -56,8 +57,8 @@ export default function ProfilePage() {
   const [userData, setUserData] = useState({
     name: "",
     email: "",
-    phone: "+7 (999) 123-45-67", // Моковые данные
-    address: "г. Москва, ул. Ленина, 42", // Моковые данные
+    phone: "",
+    address: "",
     registeredDate: new Date(), // Текущая дата как заглушка
   });
 
@@ -66,6 +67,12 @@ export default function ProfilePage() {
   const [favorites, setFavorites] = useState<FavoriteTour[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [loadingFavorites, setLoadingFavorites] = useState(true);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   
   // Упрощенный интерфейс для пользователя
   useEffect(() => {
@@ -80,11 +87,35 @@ export default function ProfilePage() {
         email: session.user.email || "",
       }));
 
+      // Загружаем пользовательские данные
+      fetchUserData();
+
       // Загружаем заказы и избранные туры
       fetchOrders();
       fetchFavorites();
     }
   }, [session, status, router]);
+
+  // Функция для загрузки дополнительных данных пользователя
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch('/api/user/profile');
+      
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить данные пользователя');
+      }
+      
+      const userData = await response.json();
+      setUserData(prev => ({
+        ...prev,
+        phone: userData.phone || "",
+        address: userData.address || "",
+        registeredDate: userData.createdAt ? new Date(userData.createdAt) : new Date(),
+      }));
+    } catch (error) {
+      console.error("Ошибка при загрузке данных пользователя:", error);
+    }
+  };
 
   // Функция для загрузки заказов
   const fetchOrders = async () => {
@@ -143,6 +174,67 @@ export default function ProfilePage() {
       case 'CANCELLED': return 'Отменен';
       case 'COMPLETED': return 'Завершен';
       default: return 'Статус неизвестен';
+    }
+  };
+
+  // Функция для изменения пароля
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+    
+    // Валидация
+    if (!password) {
+      setPasswordError("Введите текущий пароль");
+      return;
+    }
+    
+    if (!newPassword) {
+      setPasswordError("Введите новый пароль");
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      setPasswordError("Новый пароль должен содержать не менее 6 символов");
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Пароли не совпадают");
+      return;
+    }
+    
+    setIsChangingPassword(true);
+    
+    try {
+      const response = await fetch('/api/user/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: password,
+          newPassword: newPassword,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Не удалось изменить пароль');
+      }
+      
+      // Успешное изменение пароля
+      toast.success("Пароль успешно изменен");
+      setShowPasswordModal(false);
+      
+      // Сбрасываем форму
+      setPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      setPasswordError(error.message || "Произошла ошибка при изменении пароля");
+    } finally {
+      setIsChangingPassword(false);
     }
   };
 
@@ -206,7 +298,10 @@ export default function ProfilePage() {
             </div>
             
             <div className="mt-6 pt-6 border-t border-gray-200">
-              <button className="w-full flex items-center justify-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-medium transition-colors">
+              <button 
+                onClick={() => setShowPasswordModal(true)}
+                className="w-full flex items-center justify-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-medium transition-colors"
+              >
                 <LockClosedIcon className="h-4 w-4 mr-2" />
                 Изменить пароль
               </button>
@@ -393,6 +488,90 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Модальное окно для изменения пароля */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md mx-auto p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Изменение пароля</h3>
+              <button 
+                onClick={() => setShowPasswordModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            
+            {passwordError && (
+              <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-md text-sm">
+                {passwordError}
+              </div>
+            )}
+            
+            <form onSubmit={handleChangePassword}>
+              <div className="mb-4">
+                <label htmlFor="current-password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Текущий пароль
+                </label>
+                <input
+                  type="password"
+                  id="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              
+              <div className="mb-4">
+                <label htmlFor="new-password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Новый пароль
+                </label>
+                <input
+                  type="password"
+                  id="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              
+              <div className="mb-6">
+                <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Подтвердите новый пароль
+                </label>
+                <input
+                  type="password"
+                  id="confirm-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
+                >
+                  {isChangingPassword ? "Изменение..." : "Изменить пароль"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

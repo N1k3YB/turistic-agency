@@ -54,6 +54,8 @@ interface Tour {
     updatedAt: string;
   };
   hasOrder: boolean;
+  averageRating?: number; // Средний рейтинг
+  reviewCount?: number;   // Количество отзывов
 }
 
 export default function TourDetailPage() {
@@ -74,8 +76,10 @@ export default function TourDetailPage() {
   const [checkingFavorite, setCheckingFavorite] = useState(true);
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [userPhone, setUserPhone] = useState('');
 
-  // Получаем данные о туре
+  // Получаем данные о туре и его отзывы
   useEffect(() => {
     if (!slug) return;
 
@@ -92,6 +96,20 @@ export default function TourDetailPage() {
         }
         const data = await response.json();
         setTour(data);
+        
+        // Получаем отзывы для расчета рейтинга
+        const reviewsResponse = await fetch(`/api/reviews?tourId=${data.id}`);
+        if (reviewsResponse.ok) {
+          const reviewsData = await reviewsResponse.json();
+          setReviews(reviewsData);
+          
+          // Рассчитываем средний рейтинг
+          if (reviewsData.length > 0) {
+            const totalRating = reviewsData.reduce((sum: number, review: any) => sum + review.rating, 0);
+            const averageRating = (totalRating / reviewsData.length).toFixed(1);
+            setTour(prev => prev ? {...prev, averageRating: parseFloat(averageRating), reviewCount: reviewsData.length} : null);
+          }
+        }
         
         // Если пользователь авторизован, заполним email из профиля
         if (session?.user?.email) {
@@ -132,6 +150,35 @@ export default function TourDetailPage() {
 
     checkIfFavorite();
   }, [session, tour]);
+
+  // Эффект для загрузки данных пользователя, если он авторизован
+  useEffect(() => {
+    if (session?.user) {
+      // Устанавливаем email пользователя для формы заказа
+      setContactEmail(session.user.email || '');
+      
+      // Загружаем номер телефона пользователя, если он есть
+      fetchUserPhone();
+    }
+  }, [session]);
+  
+  // Функция для загрузки телефона пользователя
+  const fetchUserPhone = async () => {
+    try {
+      const response = await fetch('/api/user/profile');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setUserPhone(data.phone || '');
+        // Устанавливаем телефон пользователя в форму заказа, если он есть
+        if (data.phone) {
+          setContactPhone(data.phone);
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке данных пользователя:', error);
+    }
+  };
 
   // Функция для добавления/удаления из избранного
   const toggleFavorite = async () => {
@@ -246,6 +293,20 @@ export default function TourDetailPage() {
     }
   };
 
+  // Функция для отображения звезд рейтинга
+  const renderRatingStars = (rating: number) => {
+    return (
+      <div className="flex items-center">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <StarIcon 
+            key={star} 
+            className={`h-5 w-5 ${star <= Math.round(rating) ? 'text-yellow-400' : 'text-white/40'}`} 
+          />
+        ))}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -342,18 +403,23 @@ export default function TourDetailPage() {
                 </div>
               </div>
               <h1 className="text-3xl md:text-5xl font-bold text-white text-shadow mb-2">{tour.title}</h1>
+              
+              {/* Рейтинг тура */}
               <div className="flex items-center text-yellow-300 mb-2">
-                <StarIcon className="h-5 w-5" />
-                <StarIcon className="h-5 w-5" />
-                <StarIcon className="h-5 w-5" />
-                <StarIcon className="h-5 w-5" />
-                <StarIcon className="h-5 w-5 text-white/40" />
-                <span className="ml-2 text-white text-sm">(32 отзыва)</span>
+                {tour.averageRating ? (
+                  <>
+                    {renderRatingStars(tour.averageRating)}
+                    <span className="ml-2 text-white text-sm">
+                      {tour.averageRating.toFixed(1)} ({tour.reviewCount} {getReviewWord(tour.reviewCount ?? 0)})
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    {renderRatingStars(0)}
+                    <span className="ml-2 text-white text-sm">Нет отзывов</span>
+                  </>
+                )}
               </div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md px-4 py-3 rounded-lg text-white flex flex-col items-center md:items-start">
-              <div className="text-sm mb-1">Цена за человека от</div>
-              <div className="text-3xl font-bold">{tour.price} {tour.currency}</div>
             </div>
           </div>
         </div>
@@ -403,7 +469,7 @@ export default function TourDetailPage() {
               <div className="bg-white p-6 rounded-xl shadow-md">
                 <h2 className="text-2xl font-semibold mb-6 text-gray-800">О туре</h2>
                 <p className="text-gray-600 mb-6 leading-relaxed">{tour.shortDescription}</p>
-                <div className="text-gray-700 leading-relaxed whitespace-pre-line">{tour.fullDescription}</div>
+                <div className="text-gray-700 leading-relaxed whitespace-pre-line break-words overflow-hidden">{tour.fullDescription}</div>
               </div>
             )}
 
@@ -585,14 +651,24 @@ export default function TourDetailPage() {
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Телефон (опционально)</label>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Телефон {userPhone ? '' : '(опционально)'}</label>
                     <input 
                       type="tel" 
                       value={contactPhone} 
                       onChange={(e) => setContactPhone(e.target.value)}
                       className="w-full border border-gray-300 rounded-lg p-2"
+                      placeholder={userPhone ? "Используется номер из профиля" : "Опционально"}
                     />
+                    {userPhone && contactPhone !== userPhone && (
+                      <button 
+                        type="button"
+                        onClick={() => setContactPhone(userPhone)}
+                        className="mt-1 text-sm text-blue-600 hover:underline"
+                      >
+                        Использовать номер из профиля
+                      </button>
+                    )}
                   </div>
                   
                   <div className="flex items-center justify-between font-medium text-lg pt-2 border-t border-gray-200">
@@ -643,4 +719,18 @@ export default function TourDetailPage() {
       </div>
     </div>
   );
+}
+
+// Функция для правильного склонения слова "отзыв"
+function getReviewWord(count: number): string {
+  const lastDigit = count % 10;
+  const lastTwoDigits = count % 100;
+  
+  if (lastDigit === 1 && lastTwoDigits !== 11) {
+    return 'отзыв';
+  } else if ([2, 3, 4].includes(lastDigit) && ![12, 13, 14].includes(lastTwoDigits)) {
+    return 'отзыва';
+  } else {
+    return 'отзывов';
+  }
 } 

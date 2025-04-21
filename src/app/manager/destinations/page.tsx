@@ -9,7 +9,11 @@ import {
   PencilIcon, 
   TrashIcon, 
   ArrowLeftIcon,
-  ExclamationCircleIcon
+  ExclamationCircleIcon,
+  MagnifyingGlassIcon,
+  MapPinIcon,
+  ArrowUpIcon,
+  ArrowDownIcon
 } from '@heroicons/react/24/outline';
 import ImageWithFallback from '@/components/ImageWithFallback';
 import toast from 'react-hot-toast';
@@ -36,6 +40,11 @@ export default function ManagerDestinationsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [destinationToDelete, setDestinationToDelete] = useState<Destination | null>(null);
   const [processingDelete, setProcessingDelete] = useState<boolean>(false);
+  // Добавляем состояния для поиска и сортировки
+  const [search, setSearch] = useState('');
+  const [filteredDestinations, setFilteredDestinations] = useState<Destination[]>([]);
+  const [sortField, setSortField] = useState<'name' | 'createdAt' | 'toursCount'>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     // Если пользователь не авторизован, перенаправляем на страницу входа
@@ -57,6 +66,25 @@ export default function ManagerDestinationsPage() {
     }
   }, [status, session, router]);
 
+  // Фильтрация направлений при изменении поискового запроса
+  useEffect(() => {
+    if (search.trim() === '') {
+      setFilteredDestinations(destinations);
+    } else {
+      const searchLower = search.toLowerCase();
+      setFilteredDestinations(
+        destinations.filter(
+          dest => 
+            dest.name.toLowerCase().includes(searchLower) || 
+            dest.description.toLowerCase().includes(searchLower)
+        )
+      );
+    }
+    
+    // Применяем сортировку после фильтрации
+    sortDestinations(sortField, sortDirection);
+  }, [search, destinations, sortField, sortDirection]);
+
   const fetchDestinations = async () => {
     try {
       setLoading(true);
@@ -72,15 +100,18 @@ export default function ManagerDestinationsPage() {
       if (data && typeof data === 'object') {
         // Если это объект с полем destinations
         if (Array.isArray(data.destinations)) {
-          setDestinations(data.destinations as Destination[]);
+          setDestinations(data.destinations);
+          setFilteredDestinations(data.destinations);
         } 
         // Если это объект с полем data, содержащим массив
         else if (Array.isArray(data.data)) {
-          setDestinations(data.data as Destination[]);
+          setDestinations(data.data);
+          setFilteredDestinations(data.data);
         }
         // Если это массив
         else if (Array.isArray(data)) {
-          setDestinations(data as Destination[]);
+          setDestinations(data);
+          setFilteredDestinations(data);
         }
         // Если у объекта есть перечисляемые свойства, преобразуем в массив
         else if (Object.keys(data).length > 0) {
@@ -89,14 +120,17 @@ export default function ManagerDestinationsPage() {
           if (Array.isArray(destinationsArray) && destinationsArray.length > 0 && 
               typeof destinationsArray[0] === 'object' && destinationsArray[0] !== null && 'id' in destinationsArray[0]) {
             setDestinations(destinationsArray as Destination[]);
+            setFilteredDestinations(destinationsArray as Destination[]);
           } else {
             setError('Формат данных от API не соответствует ожидаемому');
           }
         } else {
           setDestinations([]);
+          setFilteredDestinations([]);
         }
       } else {
         setDestinations([]);
+        setFilteredDestinations([]);
       }
     } catch (error) {
       console.error("Ошибка при загрузке направлений:", error);
@@ -128,6 +162,7 @@ export default function ManagerDestinationsPage() {
       
       // Обновляем список направлений
       setDestinations(destinations.filter(d => d.id !== destinationToDelete.id));
+      setFilteredDestinations(filteredDestinations.filter(d => d.id !== destinationToDelete.id));
       toast.success('Направление успешно удалено');
       setShowDeleteModal(false);
       setDestinationToDelete(null);
@@ -136,6 +171,45 @@ export default function ManagerDestinationsPage() {
       toast.error('Произошла ошибка при удалении направления');
     } finally {
       setProcessingDelete(false);
+    }
+  };
+
+  // Обработчик изменения поискового запроса
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(e.target.value);
+  };
+
+  // Функция для сортировки направлений
+  const sortDestinations = (field: 'name' | 'createdAt' | 'toursCount', direction: 'asc' | 'desc') => {
+    setSortField(field);
+    setSortDirection(direction);
+    
+    const sorted = [...filteredDestinations].sort((a, b) => {
+      if (field === 'name') {
+        return direction === 'asc' 
+          ? a.name.localeCompare(b.name) 
+          : b.name.localeCompare(a.name);
+      } else if (field === 'createdAt') {
+        return direction === 'asc'
+          ? new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      } else if (field === 'toursCount') {
+        const aCount = a._count?.tours || 0;
+        const bCount = b._count?.tours || 0;
+        return direction === 'asc' ? aCount - bCount : bCount - aCount;
+      }
+      return 0;
+    });
+    
+    setFilteredDestinations(sorted);
+  };
+
+  // Функция для изменения сортировки
+  const toggleSort = (field: 'name' | 'createdAt' | 'toursCount') => {
+    if (sortField === field) {
+      sortDestinations(field, sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      sortDestinations(field, 'asc');
     }
   };
 
@@ -166,13 +240,64 @@ export default function ManagerDestinationsPage() {
               Вернуться в панель менеджера
             </Link>
             <h1 className="text-3xl font-bold text-gray-800">Управление направлениями</h1>
+            <p className="text-gray-600 mt-1">Всего направлений: {destinations.length}</p>
           </div>
+          <div className="flex gap-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Поиск направлений..."
+                value={search}
+                onChange={handleSearchChange}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full"
+              />
+              <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-2.5" />
+            </div>
+            <button
+              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center transition-colors"
+              onClick={() => router.push('/manager/destinations/create')}
+            >
+              <PlusIcon className="h-5 w-5 mr-2" />
+              Добавить направление
+            </button>
+          </div>
+        </div>
+
+        {/* Контролы сортировки */}
+        <div className="mb-4 flex flex-wrap gap-2">
+          <span className="text-sm text-gray-600 self-center">Сортировать по:</span>
           <button
-            className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center transition-colors"
-            onClick={() => router.push('/manager/destinations/create')}
+            onClick={() => toggleSort('name')}
+            className={`px-3 py-1 rounded-md text-sm flex items-center ${
+              sortField === 'name' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
           >
-            <PlusIcon className="h-5 w-5 mr-2" />
-            Добавить направление
+            Названию
+            {sortField === 'name' && (
+              sortDirection === 'asc' ? <ArrowUpIcon className="h-3 w-3 ml-1" /> : <ArrowDownIcon className="h-3 w-3 ml-1" />
+            )}
+          </button>
+          <button
+            onClick={() => toggleSort('createdAt')}
+            className={`px-3 py-1 rounded-md text-sm flex items-center ${
+              sortField === 'createdAt' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Дате добавления
+            {sortField === 'createdAt' && (
+              sortDirection === 'asc' ? <ArrowUpIcon className="h-3 w-3 ml-1" /> : <ArrowDownIcon className="h-3 w-3 ml-1" />
+            )}
+          </button>
+          <button
+            onClick={() => toggleSort('toursCount')}
+            className={`px-3 py-1 rounded-md text-sm flex items-center ${
+              sortField === 'toursCount' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Количеству туров
+            {sortField === 'toursCount' && (
+              sortDirection === 'asc' ? <ArrowUpIcon className="h-3 w-3 ml-1" /> : <ArrowDownIcon className="h-3 w-3 ml-1" />
+            )}
           </button>
         </div>
 
@@ -183,13 +308,15 @@ export default function ManagerDestinationsPage() {
           </div>
         )}
 
-        {destinations.length === 0 && !loading && !error ? (
+        {filteredDestinations.length === 0 && !loading && !error ? (
           <div className="bg-white rounded-xl shadow-md p-8 text-center">
             <div className="mx-auto mb-4 bg-blue-50 h-20 w-20 rounded-full flex items-center justify-center">
               <ExclamationCircleIcon className="h-10 w-10 text-blue-500" />
             </div>
             <h2 className="text-2xl font-semibold text-gray-800 mb-4">Направления не найдены</h2>
-            <p className="text-gray-600 mb-6">На данный момент в системе нет направлений</p>
+            <p className="text-gray-600 mb-6">
+              {search ? `По запросу "${search}" ничего не найдено` : 'На данный момент в системе нет направлений'}
+            </p>
             <button
               className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center transition-colors mx-auto"
               onClick={() => router.push('/manager/destinations/create')}
@@ -200,7 +327,7 @@ export default function ManagerDestinationsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {destinations.map((destination) => (
+            {filteredDestinations.map((destination) => (
               <div key={destination.id} className="bg-white rounded-xl shadow-md overflow-hidden">
                 <div className="h-48 relative">
                   <ImageWithFallback
@@ -231,14 +358,23 @@ export default function ManagerDestinationsPage() {
                   </p>
                   
                   <div className="flex justify-between items-center">
-                    <Link
-                      href={`/destinations/${destination.slug}`}
-                      className="text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 py-2 px-3 rounded-md text-sm transition-colors"
-                      target="_blank"
-                    >
-                      Просмотр
-                    </Link>
                     <div className="flex space-x-2">
+                      <Link
+                        href={`/destinations/${destination.slug}`}
+                        className="text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 py-2 px-3 rounded-md text-sm transition-colors"
+                        target="_blank"
+                      >
+                        Просмотр
+                      </Link>
+                      <Link
+                        href={`/manager/tours?destinationId=${destination.id}`}
+                        className="text-green-600 hover:text-green-800 bg-green-100 hover:bg-green-200 py-2 px-3 rounded-md text-sm transition-colors flex items-center"
+                      >
+                        <MapPinIcon className="h-4 w-4 mr-1" />
+                        Туры
+                      </Link>
+                    </div>
+                      <div className="flex space-x-2">
                       <Link
                         href={`/manager/destinations/edit/${destination.id}`}
                         className="text-blue-600 hover:text-blue-800 bg-blue-100 hover:bg-blue-200 py-2 px-3 rounded-md text-sm transition-colors flex items-center"

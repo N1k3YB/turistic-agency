@@ -57,11 +57,33 @@ export async function GET(request: Request, { params }: Params) {
       hasOrder = !!userOrder;
     }
 
-    // Возвращаем тур с актуальным количеством свободных мест и информацией о заказе
+    // Получаем информацию о рейтинге и отзывах
+    const reviews = await prisma.review.findMany({
+      where: {
+        tourId: tour.id,
+        isApproved: true
+      },
+      select: {
+        rating: true
+      }
+    });
+
+    // Рассчитываем средний рейтинг
+    let averageRating = null;
+    let reviewCount = reviews.length;
+    
+    if (reviewCount > 0) {
+      const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+      averageRating = totalRating / reviewCount;
+    }
+
+    // Возвращаем тур с актуальным количеством свободных мест, информацией о заказе и рейтинге
     return NextResponse.json({
       ...tour,
       availableSeats,
-      hasOrder
+      hasOrder,
+      averageRating,
+      reviewCount
     });
   } catch (error) {
     console.error("[TOUR_GET]", error);

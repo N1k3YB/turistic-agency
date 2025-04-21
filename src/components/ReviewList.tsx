@@ -25,6 +25,20 @@ interface ReviewListProps {
   refreshTrigger?: number;
 }
 
+// Функция для правильного склонения слова "отзыв"
+function getReviewWord(count: number): string {
+  const lastDigit = count % 10;
+  const lastTwoDigits = count % 100;
+  
+  if (lastDigit === 1 && lastTwoDigits !== 11) {
+    return 'отзыв';
+  } else if ([2, 3, 4].includes(lastDigit) && ![12, 13, 14].includes(lastTwoDigits)) {
+    return 'отзыва';
+  } else {
+    return 'отзывов';
+  }
+}
+
 export default function ReviewList({ tourId, refreshTrigger = 0 }: ReviewListProps) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -184,7 +198,7 @@ export default function ReviewList({ tourId, refreshTrigger = 0 }: ReviewListPro
   return (
     <div className="bg-white rounded-lg p-6 shadow-sm mb-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
-        <h3 className="text-lg font-medium text-gray-900">Отзывы ({reviews.length})</h3>
+        <h3 className="text-lg font-medium text-gray-900">Отзывы ({reviews.length} {getReviewWord(reviews.length)})</h3>
         <div className="flex items-center mt-2 md:mt-0">
           <div className="flex items-center">
             {[1, 2, 3, 4, 5].map((star) => (

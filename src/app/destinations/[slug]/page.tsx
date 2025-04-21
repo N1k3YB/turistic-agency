@@ -15,8 +15,15 @@ interface TourSummary {
   currency: string;
   imageUrl: string;
   shortDescription: string;
+  duration: number;
   createdAt: string;
   updatedAt: string;
+  availableSeats?: number;
+  averageRating?: number;
+  _count?: {
+    orders?: number;
+    reviews?: number;
+  };
 }
 
 // Тип для направления, включая список туров
@@ -37,6 +44,10 @@ export default function DestinationDetailPage() {
   const [destination, setDestination] = useState<Destination | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [displayedTours, setDisplayedTours] = useState<TourSummary[]>([]);
+  const [popularTour, setPopularTour] = useState<TourSummary | null>(null);
+  const [offset, setOffset] = useState(0);
+  const limit = 6; // Количество туров для отображения за один раз
 
   useEffect(() => {
     if (!slug) return;
@@ -54,6 +65,23 @@ export default function DestinationDetailPage() {
         }
         const data: Destination = await response.json();
         setDestination(data);
+
+        // Запрашиваем популярные туры для этого направления
+        const popularResponse = await fetch(`/api/tours?destinationId=${data.id}&popular=true&limit=1`);
+        if (popularResponse.ok) {
+          const popularData = await popularResponse.json();
+          if (popularData.length > 0) {
+            setPopularTour(popularData[0]);
+          }
+        }
+
+        // Получаем первые limit туров для начального отображения
+        const toursResponse = await fetch(`/api/tours?destinationId=${data.id}&limit=${limit}`);
+        if (toursResponse.ok) {
+          const toursData = await toursResponse.json();
+          setDisplayedTours(toursData);
+          setOffset(limit);
+        }
       } catch (err: any) {
         setError(err.message || 'Произошла ошибка при загрузке');
       } finally {
@@ -63,6 +91,34 @@ export default function DestinationDetailPage() {
 
     fetchDestination();
   }, [slug]);
+
+  // Функция для загрузки дополнительных туров
+  const loadMoreTours = async () => {
+    if (!destination) return;
+    
+    try {
+      const response = await fetch(`/api/tours?destinationId=${destination.id}&limit=${limit}&offset=${offset}`);
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить больше туров');
+      }
+      const data = await response.json();
+      if (data.length > 0) {
+        setDisplayedTours(prev => [...prev, ...data]);
+        setOffset(prev => prev + limit);
+      }
+    } catch (err) {
+      console.error('Ошибка при загрузке дополнительных туров:', err);
+    }
+  };
+
+  // Функция для выбора случайного тура
+  const selectRandomTour = () => {
+    if (displayedTours.length > 0) {
+      const randomIndex = Math.floor(Math.random() * displayedTours.length);
+      const randomTour = displayedTours[randomIndex];
+      window.location.href = `/tours/${randomTour.slug}`;
+    }
+  };
 
   if (loading) {
     return <div className="container mx-auto px-4 py-8 min-h-screen text-center">Загрузка...</div>;
@@ -90,6 +146,11 @@ export default function DestinationDetailPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
         <div className="absolute bottom-0 left-0 p-6 md:p-8">
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-2">{destination.name}</h1>
+          <button 
+            onClick={selectRandomTour} 
+            className="bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-full text-sm font-medium transition-colors shadow-lg">
+            Подобрать тур
+          </button>
         </div>
       </div>
 
@@ -99,18 +160,36 @@ export default function DestinationDetailPage() {
         <p className="text-gray-700 whitespace-pre-line">{destination.description}</p>
       </section>
 
+      {/* Самый популярный тур в этом направлении */}
+      {popularTour && (
+        <section className="mb-12">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-800">Самый популярный тур</h2>
+          <div className="max-w-md mx-auto h-full">
+            <TourCard tour={popularTour} />
+          </div>
+        </section>
+      )}
+
       {/* Список туров в этом направлении */}
       <section>
         <h2 className="text-2xl font-semibold mb-6 text-gray-800">Туры в направлении "{destination.name}"</h2>
-        {destination.tours && destination.tours.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {destination.tours.map((tour) => (
-              // Оборачиваем TourCard в Link
-              <Link key={tour.id} href={`/tours/${tour.slug}`} passHref>
-                <TourCard tour={tour} />
-              </Link>
-            ))}
-          </div>
+        {displayedTours && displayedTours.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {displayedTours.map((tour) => (
+                <div key={tour.id} className="h-full">
+                  <TourCard tour={tour} />
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 text-center">
+              <button 
+                onClick={loadMoreTours}
+                className="bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold py-2 px-6 rounded-full transition-colors">
+                Показать больше туров
+              </button>
+            </div>
+          </>
         ) : (
           <p className="text-gray-500">В этом направлении пока нет доступных туров.</p>
         )}

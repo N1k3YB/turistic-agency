@@ -32,6 +32,7 @@ interface Order {
     currency: string;
     availableSeats: number;
     nextTourDate: string | null;
+    slug: string;
   };
 }
 
@@ -220,7 +221,7 @@ export default function OrdersPage() {
                           }
                         </div>
                         <Link 
-                          href={`/tours/${order.tour.title.toLowerCase().replace(/\s+/g, '-')}`} 
+                          href={`/tours/${order.tour.slug}`} 
                           className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                         >
                           Просмотреть тур

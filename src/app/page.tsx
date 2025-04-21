@@ -30,16 +30,23 @@ interface Destination {
 
 export default function Home() {
   const [tours, setTours] = useState<Tour[]>([]);
+  const [popularTours, setPopularTours] = useState<Tour[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingPopular, setLoadingPopular] = useState(true);
   const [loadingDestinations, setLoadingDestinations] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDestination, setSelectedDestination] = useState('');
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const limit = 6; // Количество туров для загрузки за один раз
 
   // Функция для загрузки туров с учетом фильтров
-  const fetchTours = useCallback(async () => {
-    setLoading(true);
+  const fetchTours = useCallback(async (newOffset: number = 0) => {
+    if (newOffset === 0) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const params = new URLSearchParams();
@@ -49,18 +56,64 @@ export default function Home() {
       if (selectedDestination) {
         params.append('destinationId', selectedDestination);
       }
+      params.append('limit', limit.toString());
+      params.append('offset', newOffset.toString());
+      
       const response = await fetch(`/api/tours?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Не удалось загрузить туры');
       }
       const data: Tour[] = await response.json();
-      setTours(data);
+      
+      if (newOffset === 0) {
+        setTours(data);
+      } else {
+        setTours(prev => [...prev, ...data]);
+      }
+      
+      setHasMore(data.length === limit);
+      setOffset(newOffset);
     } catch (err: any) {
       setError(err.message || 'Произошла ошибка при загрузке туров');
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, selectedDestination]); // Зависимости для useCallback
+  }, [searchTerm, selectedDestination, limit]);
+
+  // Функция для загрузки популярных туров
+  const fetchPopularTours = useCallback(async () => {
+    setLoadingPopular(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('popular', 'true');
+      params.append('limit', '3'); // Получаем только 3 популярных тура
+      
+      const response = await fetch(`/api/tours?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить популярные туры');
+      }
+      const data: Tour[] = await response.json();
+      setPopularTours(data);
+    } catch (err: any) {
+      console.error('Ошибка загрузки популярных туров:', err);
+    } finally {
+      setLoadingPopular(false);
+    }
+  }, []);
+
+  // Функция для загрузки дополнительных туров
+  const loadMoreTours = () => {
+    fetchTours(offset + limit);
+  };
+
+  // Функция для выбора случайного тура
+  const selectRandomTour = useCallback(() => {
+    if (tours.length > 0) {
+      const randomIndex = Math.floor(Math.random() * tours.length);
+      const randomTour = tours[randomIndex];
+      window.location.href = `/tours/${randomTour.slug}`;
+    }
+  }, [tours]);
 
   // Загрузка направлений один раз при монтировании
   useEffect(() => {
@@ -85,8 +138,9 @@ export default function Home() {
 
   // Загрузка туров при изменении фильтров или при первом рендере
   useEffect(() => {
-    fetchTours();
-  }, [fetchTours]); // Зависимость от fetchTours
+    fetchTours(0); // Сбрасываем смещение на 0 при изменении фильтров
+    fetchPopularTours(); // Загружаем популярные туры
+  }, [fetchTours, fetchPopularTours, searchTerm, selectedDestination]); // Зависимости
 
   // Обработчик для формы поиска (может быть пустым, т.к. используем onChange и useEffect)
   const handleSearchSubmit = (event: React.FormEvent) => {
@@ -106,14 +160,43 @@ export default function Home() {
             Лучшие туры и направления по всему миру с турагентством "Полёт"
           </p>
           <div className="flex flex-col md:flex-row gap-4">
-            <button className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-full font-semibold text-lg transition-colors shadow-lg">
+            <button 
+              onClick={selectRandomTour}
+              className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-full font-semibold text-lg transition-colors shadow-lg">
               Подобрать тур
             </button>
           </div>
         </div>
       </section>
 
-      <div className="w-full max-w-7xl px-4 md:px-8 py-12">
+      {/* Популярные туры */}
+      <section className="w-full max-w-7xl px-4 md:px-8 py-12">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">Популярные туры</h2>
+          <p className="text-gray-600">Самые востребованные направления среди наших клиентов</p>
+        </div>
+        
+        {loadingPopular ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+            {popularTours.length > 0 ? (
+              popularTours.map((tour) => (
+                <div key={tour.id} className="h-full">
+                  <TourCard tour={tour} />
+                </div>
+              ))
+            ) : (
+              <p className="col-span-3 text-center text-gray-600">Популярные туры не найдены</p>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* Форма поиска */}
+      <div className="w-full max-w-7xl px-4 md:px-8 py-8">
         <div className="mb-12">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
             <div>
@@ -157,7 +240,7 @@ export default function Home() {
         </div>
 
         <div className="w-full">
-          {loading && (
+          {loading && offset === 0 && (
             <div className="flex justify-center items-center py-20">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
@@ -172,16 +255,28 @@ export default function Home() {
             <>
               {tours.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {tours.map((tour) => (
-                      <TourCard key={tour.id} tour={tour} />
+                      <div key={tour.id} className="h-full">
+                        <TourCard tour={tour} />
+                      </div>
                     ))}
                   </div>
-                  <div className="mt-12 text-center">
-                    <button className="bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold py-2 px-6 rounded-full transition-colors">
-                      Показать больше туров
-                    </button>
-                  </div>
+                  {hasMore && (
+                    <div className="mt-12 text-center">
+                      {loading && offset > 0 ? (
+                        <div className="flex justify-center items-center py-4">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={loadMoreTours}
+                          className="bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold py-2 px-6 rounded-full transition-colors">
+                          Показать больше туров
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="bg-blue-50 p-10 rounded-xl text-center flex flex-col items-center">

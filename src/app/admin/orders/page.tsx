@@ -61,7 +61,7 @@ export default function AdminOrdersPage() {
     // Проверяем роль пользователя
     if (status === 'authenticated') {
       const userRole = session?.user?.role;
-      if (userRole !== 'ADMIN' && userRole !== 'MANAGER') {
+      if (userRole !== 'ADMIN') {
         router.push('/');
         return;
       }
@@ -198,7 +198,7 @@ export default function AdminOrdersPage() {
           <div>
             <Link href="/admin" className="text-blue-600 hover:text-blue-800 flex items-center mb-2">
               <ArrowLeftIcon className="h-4 w-4 mr-1" />
-              Вернуться в админ-панель
+              Вернуться в панель администратора
             </Link>
             <h1 className="text-3xl font-bold text-gray-800">Управление заказами</h1>
             <p className="text-gray-600 mt-1">Всего заказов: {orders.length}</p>
@@ -217,8 +217,8 @@ export default function AdminOrdersPage() {
             <div className="mx-auto mb-4 bg-blue-50 h-20 w-20 rounded-full flex items-center justify-center">
               <ExclamationCircleIcon className="h-10 w-10 text-blue-500" />
             </div>
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Нет заказов</h2>
-            <p className="text-gray-600 mb-6">Заказы появятся здесь, когда пользователи начнут бронировать туры</p>
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Заказы не найдены</h2>
+            <p className="text-gray-600 mb-6">На данный момент в системе нет заказов</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -249,106 +249,103 @@ export default function AdminOrdersPage() {
                               <span className="ml-1">{statusDetails.text}</span>
                             </span>
                           </div>
-                          <p className="text-gray-500 text-sm">
-                            Заказ №{order.id} от {formatDate(order.createdAt)}
-                          </p>
                         </div>
-                        
-                        <div className="flex space-x-2 ml-4">
-                          {order.status !== 'CONFIRMED' && (
-                            <button 
-                              onClick={() => updateOrderStatus(order.id, 'CONFIRMED')}
-                              disabled={processingOrderId === order.id}
-                              className="bg-green-100 hover:bg-green-200 text-green-700 py-1 px-3 rounded-lg text-sm font-medium transition-colors flex items-center"
-                            >
-                              <CheckCircleIcon className="h-4 w-4 mr-1" />
-                              Подтвердить
-                            </button>
-                          )}
-                          
-                          {order.status !== 'CANCELLED' && (
-                            <button 
-                              onClick={() => updateOrderStatus(order.id, 'CANCELLED')}
-                              disabled={processingOrderId === order.id}
-                              className="bg-red-100 hover:bg-red-200 text-red-700 py-1 px-3 rounded-lg text-sm font-medium transition-colors flex items-center"
-                            >
-                              <XCircleIcon className="h-4 w-4 mr-1" />
-                              Отменить
-                            </button>
-                          )}
-                          
-                          {(order.status === 'CONFIRMED') && (
-                            <button 
-                              onClick={() => updateOrderStatus(order.id, 'COMPLETED')}
-                              disabled={processingOrderId === order.id}
-                              className="bg-blue-100 hover:bg-blue-200 text-blue-700 py-1 px-3 rounded-lg text-sm font-medium transition-colors flex items-center"
-                            >
-                              <CheckCircleIcon className="h-4 w-4 mr-1" />
-                              Завершить
-                            </button>
-                          )}
+                        <p className="font-bold text-xl text-blue-600">
+                          {order.totalPrice}
+                        </p>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div className="bg-gray-50 p-3 rounded-md">
+                          <p className="text-xs text-gray-500 mb-1">Заказчик</p>
+                          <div className="flex items-center text-sm">
+                            <UserIcon className="h-4 w-4 text-gray-400 mr-1" />
+                            <span>{order.user.name || 'Не указано'}</span>
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-md">
+                          <p className="text-xs text-gray-500 mb-1">Email</p>
+                          <div className="flex items-center text-sm">
+                            <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-1" />
+                            <span className="truncate">{order.contactEmail || order.user.email || 'Не указан'}</span>
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-md">
+                          <p className="text-xs text-gray-500 mb-1">Телефон</p>
+                          <div className="flex items-center text-sm">
+                            <PhoneIcon className="h-4 w-4 text-gray-400 mr-1" />
+                            <span>{order.contactPhone || 'Не указан'}</span>
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded-md">
+                          <p className="text-xs text-gray-500 mb-1">Дата заказа</p>
+                          <p className="text-sm">{formatDate(order.createdAt)}</p>
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Количество мест:</span>
-                            <span className="font-medium">{order.quantity}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Цена за место:</span>
-                            <span className="font-medium">{order.tour.price} {order.tour.currency}</span>
-                          </div>
-                          <div className="flex justify-between text-sm border-t border-gray-100 pt-2 mt-2">
-                            <span className="text-gray-700 font-medium">Итого:</span>
-                            <span className="font-bold text-blue-600">{order.totalPrice} {order.tour.currency}</span>
-                          </div>
-                          {order.status === 'CANCELLED' && (
-                            <div className="mt-2 text-red-600 text-xs">
-                              Денежные средства вернутся на привязанный банковский счет в течение 3 рабочих дней. Приносим свои извинения.
-                            </div>
-                          )}
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex items-center">
+                          <span className="text-gray-600 mr-2">Количество мест:</span>
+                          <span className="font-medium">{order.quantity}</span>
                         </div>
                         
-                        <div className="space-y-2 bg-gray-50 p-3 rounded-lg">
-                          <h3 className="font-medium text-gray-700 mb-2">Данные клиента:</h3>
-                          <div className="flex items-start text-sm">
-                            <UserIcon className="h-4 w-4 text-gray-400 mr-2 mt-0.5" />
-                            <div>
-                              <span className="text-gray-600">Имя:</span>
-                              <span className="font-medium ml-1">{order.user.name || 'Не указано'}</span>
-                            </div>
-                          </div>
-                          <div className="flex items-start text-sm">
-                            <EnvelopeIcon className="h-4 w-4 text-gray-400 mr-2 mt-0.5" />
-                            <div>
-                              <span className="text-gray-600">Email:</span>
-                              <span className="font-medium ml-1">{order.contactEmail}</span>
-                            </div>
-                          </div>
-                          {order.contactPhone && (
-                            <div className="flex items-start text-sm">
-                              <PhoneIcon className="h-4 w-4 text-gray-400 mr-2 mt-0.5" />
-                              <div>
-                                <span className="text-gray-600">Телефон:</span>
-                                <span className="font-medium ml-1">{order.contactPhone}</span>
-                              </div>
+                        <div className="flex space-x-2">
+                          {order.status === 'PENDING' && (
+                            <>
+                              <button
+                                onClick={() => updateOrderStatus(order.id, 'CONFIRMED')}
+                                disabled={processingOrderId === order.id}
+                                className="bg-green-100 hover:bg-green-200 text-green-700 px-3 py-2 rounded-md text-sm font-medium flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <CheckCircleIcon className="h-4 w-4 mr-1" />
+                                Подтвердить
+                              </button>
+                              <button
+                                onClick={() => updateOrderStatus(order.id, 'CANCELLED')}
+                                disabled={processingOrderId === order.id}
+                                className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-md text-sm font-medium flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <XCircleIcon className="h-4 w-4 mr-1" />
+                                Отменить
+                              </button>
+                            </>
+                          )}
+                          
+                          {order.status === 'CONFIRMED' && (
+                            <>
+                              <button
+                                onClick={() => updateOrderStatus(order.id, 'COMPLETED')}
+                                disabled={processingOrderId === order.id}
+                                className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-2 rounded-md text-sm font-medium flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <CheckCircleIcon className="h-4 w-4 mr-1" />
+                                Завершить
+                              </button>
+                              <button
+                                onClick={() => updateOrderStatus(order.id, 'CANCELLED')}
+                                disabled={processingOrderId === order.id}
+                                className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-md text-sm font-medium flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <XCircleIcon className="h-4 w-4 mr-1" />
+                                Отменить
+                              </button>
+                            </>
+                          )}
+                          
+                          {(order.status === 'CANCELLED' || order.status === 'COMPLETED') && (
+                            <span className="text-gray-500 text-sm italic">Заказ {order.status === 'CANCELLED' ? 'отменен' : 'завершен'}</span>
+                          )}
+                          
+                          {processingOrderId === order.id && (
+                            <div className="flex items-center text-blue-600">
+                              <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Обновление...
                             </div>
                           )}
                         </div>
-                      </div>
-                      
-                      <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-100">
-                        <div className="text-sm text-gray-500">
-                          Свободных мест в туре: <span className="font-medium text-blue-600">{order.tour.availableSeats}</span>
-                        </div>
-                        <Link 
-                          href={`/tours/${order.tour.title.toLowerCase().replace(/\s+/g, '-')}`} 
-                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                        >
-                          Просмотреть тур
-                        </Link>
                       </div>
                     </div>
                   </div>

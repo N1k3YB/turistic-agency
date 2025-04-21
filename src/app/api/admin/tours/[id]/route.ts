@@ -28,6 +28,7 @@ const tourSchema = z.object({
     (val) => !val || !isNaN(Date.parse(val)), 
     { message: "Некорректная дата начала тура" }
   ).optional().nullable(),
+  availableSeats: z.number().int().positive({ message: "Количество доступных мест должно быть положительным числом" }).optional(),
 });
 
 // Тип для данных тура
@@ -208,6 +209,12 @@ export async function PUT(
         destinationId,
         duration,
         groupSize,
+        // Проверяем, не было ли уже заказов для этого тура
+        // Если заказов не было, то availableSeats можно установить равным groupSize
+        // Иначе нужно сохранить текущее значение
+        availableSeats: existingTour.availableSeats === existingTour.groupSize 
+          ? groupSize 
+          : validationResult.data.availableSeats,
         nextTourDate: nextTourDate ? new Date(nextTourDate) : null,
       }
     });
