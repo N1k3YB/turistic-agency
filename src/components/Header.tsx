@@ -22,11 +22,11 @@ const Header: React.FC = () => {
       <div className="container mx-auto px-4">
         <nav className="flex justify-between items-center py-4">
           <Link href="/" className="flex items-center space-x-2 group">
-            <div className="bg-gradient-to-r from-blue-600 to-sky-400 w-10 h-10 rounded-full flex items-center justify-center">
-              <GlobeAltIcon className="h-6 w-6 text-white" />
+            <div className="bg-gradient-to-r from-sky-600 to-sky-400 w-10 h-10 rounded-full flex items-center justify-center border border-blue-600">
+              <img src="/airplane-flight.svg" alt="Логотип" className="h-6 w-6" />
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">Полёт</span>
+              <span className="text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">АВИАВЭЙС</span>
               <span className="text-xs text-gray-500">Турагентство</span>
             </div>
           </Link>

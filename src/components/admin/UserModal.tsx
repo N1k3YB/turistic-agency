@@ -1,7 +1,11 @@
 import { useState, useEffect, Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
-import { UserRole } from '@prisma/client';
+// Удаляем импорт UserRole из @prisma/client и определяем типы самостоятельно
+// import { UserRole } from '@prisma/client';
+
+// Определяем тип UserRole для использования в компоненте
+type UserRole = 'ADMIN' | 'USER' | 'MANAGER';
 
 interface UserModalProps {
   isOpen: boolean;
@@ -30,7 +34,8 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>(UserRole.USER);
+  // Используем строковое значение 'USER' вместо UserRole.USER
+  const [role, setRole] = useState<UserRole>('USER');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -41,7 +46,7 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
       setName(user.name || '');
       setEmail(user.email || '');
       setPassword('');
-      setRole(user.role || UserRole.USER);
+      setRole(user.role || 'USER');
       setPhone(user.phone || '');
       setAddress(user.address || '');
       
@@ -55,7 +60,7 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
       setName('');
       setEmail('');
       setPassword('');
-      setRole(UserRole.USER);
+      setRole('USER');
       setPhone('');
       setAddress('');
       setErrors({});

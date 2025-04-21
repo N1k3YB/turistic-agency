@@ -221,6 +221,24 @@ exports.Prisma.OrderScalarFieldEnum = {
   contactEmail: 'contactEmail'
 };
 
+exports.Prisma.TicketScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  subject: 'subject',
+  message: 'message',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.TicketResponseScalarFieldEnum = {
+  id: 'id',
+  ticketId: 'ticketId',
+  message: 'message',
+  isFromStaff: 'isFromStaff',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -248,6 +266,13 @@ exports.OrderStatus = exports.$Enums.OrderStatus = {
   COMPLETED: 'COMPLETED'
 };
 
+exports.TicketStatus = exports.$Enums.TicketStatus = {
+  OPEN: 'OPEN',
+  IN_PROGRESS: 'IN_PROGRESS',
+  CLOSED: 'CLOSED',
+  RESOLVED: 'RESOLVED'
+};
+
 exports.Prisma.ModelName = {
   Account: 'Account',
   Session: 'Session',
@@ -257,7 +282,9 @@ exports.Prisma.ModelName = {
   Destination: 'Destination',
   Review: 'Review',
   Favorite: 'Favorite',
-  Order: 'Order'
+  Order: 'Order',
+  Ticket: 'Ticket',
+  TicketResponse: 'TicketResponse'
 };
 
 /**
