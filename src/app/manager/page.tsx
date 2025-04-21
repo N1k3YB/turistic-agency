@@ -369,17 +369,13 @@ export default function ManagerDashboardPage() {
                   </Link>
                 </li>
                 <li>
-                  <button 
-                    className={`w-full flex items-center px-4 py-2 rounded-md text-left ${
-                      activeTab === "requests" 
-                        ? "bg-blue-100 text-blue-700" 
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setActiveTab("requests")}
+                  <Link 
+                    href="/manager/tickets"
+                    className="w-full flex items-center px-4 py-2 rounded-md text-left text-gray-700 hover:bg-gray-100"
                   >
                     <ChatBubbleLeftIcon className="h-5 w-5 mr-3" />
                     Обращения клиентов
-                  </button>
+                  </Link>
                 </li>
                 <li>
                   <Link 

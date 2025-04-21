@@ -12,7 +12,10 @@ import {
   ArrowRightIcon,
   ArrowLeftIcon
 } from '@heroicons/react/24/outline';
-import { UserRole } from '@prisma/client';
+// Заменяем импорт на собственное определение типа
+// import { UserRole } from '@prisma/client';
+// Определяем тип UserRole для использования в компоненте
+type UserRole = 'ADMIN' | 'USER' | 'MANAGER';
 import UserModal from '@/components/admin/UserModal';
 import ErrorNotification from '@/components/admin/ErrorNotification';
 

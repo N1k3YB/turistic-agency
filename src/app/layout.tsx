@@ -11,8 +11,13 @@ import FooterPopularDestinations from "@/components/FooterPopularDestinations";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Турагентство 'Полёт'",
+  title: "Турагентство 'АВИАВЭЙС'",
   description: "Лучшие туры по всему миру",
+  icons: {
+    icon: "/airplane-flight.svg",
+    shortcut: "/airplane-flight.svg",
+    apple: "/airplane-flight.svg"
+  }
 };
 
 // Компонент футера
@@ -23,7 +28,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           <div>
             <h3 className="text-xl font-bold mb-4">О компании</h3>
-            <p className="text-gray-300 mb-4">Турагентство "Полёт" предлагает незабываемые путешествия по всему миру с 2010 года. Мы стремимся сделать ваш отдых комфортным и запоминающимся.</p>
+            <p className="text-gray-300 mb-4">Турагентство "АВИАВЭЙС" предлагает незабываемые путешествия по всему миру с 2010 года. Мы стремимся сделать ваш отдых комфортным и запоминающимся.</p>
             <div className="flex space-x-4">
               {/* Социальные сети */}
               <a href="#" className="text-gray-300 hover:text-white transition-colors">
@@ -74,14 +79,14 @@ const Footer = () => {
               </li>
               <li className="flex items-center">
                 <EnvelopeIcon className="h-5 w-5 text-blue-400 mr-2" />
-                <a href="mailto:info@polet-travel.ru" className="text-gray-300 hover:text-white transition-colors">info@polet-travel.ru</a>
+                <a href="mailto:info@aviaways.ru" className="text-gray-300 hover:text-white transition-colors">info@aviaways.ru</a>
               </li>
             </ul>
           </div>
         </div>
         
         <div className="pt-6 border-t border-gray-700 text-center text-gray-400 text-sm">
-          <p>© {new Date().getFullYear()} Турагентство "Полёт". Все права защищены.</p>
+          <p>© {new Date().getFullYear()} Турагентство "АВИАВЭЙС". Все права защищены.</p>
         </div>
       </div>
     </footer>

@@ -157,7 +157,7 @@ export default function Home() {
             Откройте мир удивительных путешествий
           </h1>
           <p className="text-xl md:text-2xl mb-8 max-w-2xl text-blue-100">
-            Лучшие туры и направления по всему миру с турагентством "Полёт"
+            Лучшие туры и направления по всему миру с турагентством "АВИАВЭЙС"
           </p>
           <div className="flex flex-col md:flex-row gap-4">
             <button 

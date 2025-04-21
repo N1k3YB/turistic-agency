@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, CalendarIcon, LockClosedIcon, ShoppingCartIcon, HeartIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, CalendarIcon, LockClosedIcon, ShoppingCartIcon, HeartIcon, XMarkIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import ImageWithFallback from "@/components/ImageWithFallback";
 import { toast } from "react-hot-toast";
@@ -49,6 +49,22 @@ interface FavoriteTour {
   };
 }
 
+// Интерфейс для тикета
+interface Ticket {
+  id: number;
+  subject: string;
+  message: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'CLOSED' | 'RESOLVED';
+  createdAt: string;
+  updatedAt: string;
+  responses: {
+    id: number;
+    message: string;
+    isFromStaff: boolean;
+    createdAt: string;
+  }[];
+}
+
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -73,6 +89,8 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [lastTicket, setLastTicket] = useState<Ticket | null>(null);
+  const [loadingTickets, setLoadingTickets] = useState(true);
   
   // Упрощенный интерфейс для пользователя
   useEffect(() => {
@@ -93,6 +111,9 @@ export default function ProfilePage() {
       // Загружаем заказы и избранные туры
       fetchOrders();
       fetchFavorites();
+      
+      // Загружаем последний тикет
+      fetchLastTicket();
     }
   }, [session, status, router]);
 
@@ -155,6 +176,28 @@ export default function ProfilePage() {
     }
   };
 
+  // Функция для загрузки последнего тикета
+  const fetchLastTicket = async () => {
+    try {
+      setLoadingTickets(true);
+      const response = await fetch('/api/tickets');
+      
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить тикеты');
+      }
+      
+      const tickets = await response.json();
+      // Получаем самый последний тикет (первый в списке, так как они отсортированы по дате)
+      if (tickets.length > 0) {
+        setLastTicket(tickets[0]);
+      }
+    } catch (error) {
+      console.error("Ошибка при загрузке тикетов:", error);
+    } finally {
+      setLoadingTickets(false);
+    }
+  };
+
   // Форматирование даты
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Даты уточняйте';
@@ -174,6 +217,28 @@ export default function ProfilePage() {
       case 'CANCELLED': return 'Отменен';
       case 'COMPLETED': return 'Завершен';
       default: return 'Статус неизвестен';
+    }
+  };
+
+  // Функция для определения статуса тикета
+  const getTicketStatusText = (status: string) => {
+    switch(status) {
+      case 'OPEN': return 'Открыт';
+      case 'IN_PROGRESS': return 'В обработке';
+      case 'CLOSED': return 'Закрыт';
+      case 'RESOLVED': return 'Решен';
+      default: return 'Неизвестен';
+    }
+  };
+  
+  // Функция для получения цвета статуса тикета
+  const getTicketStatusColor = (status: string) => {
+    switch(status) {
+      case 'OPEN': return 'bg-yellow-100 text-yellow-800';
+      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800';
+      case 'CLOSED': return 'bg-gray-100 text-gray-800';
+      case 'RESOLVED': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -311,6 +376,48 @@ export default function ProfilePage() {
         
         {/* Основные разделы */}
         <div className="md:col-span-2 flex flex-col space-y-6">
+          {/* Раздел для администратора и менеджера */}
+          {(session?.user?.role === 'ADMIN' || session?.user?.role === 'MANAGER') && (
+            <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-blue-600">
+              <h2 className="text-xl font-semibold mb-4">Панель управления</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Link
+                  href={session?.user?.role === 'ADMIN' ? "/admin/orders" : "/manager/orders"}
+                  className="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg flex items-center transition-colors"
+                >
+                  <ShoppingCartIcon className="h-5 w-5 text-blue-600 mr-3" />
+                  <div>
+                    <p className="font-medium text-gray-800">Управление заказами</p>
+                    <p className="text-sm text-gray-500">Просмотр и редактирование заказов пользователей</p>
+                  </div>
+                </Link>
+                
+                {session?.user?.role === 'ADMIN' ? (
+                  <Link
+                    href="/admin"
+                    className="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg flex items-center transition-colors"
+                  >
+                    <UserIcon className="h-5 w-5 text-blue-600 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-800">Панель администратора</p>
+                      <p className="text-sm text-gray-500">Полный доступ к администрированию сайта</p>
+                    </div>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/manager"
+                    className="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg flex items-center transition-colors"
+                  >
+                    <UserIcon className="h-5 w-5 text-blue-600 mr-3" />
+                    <div>
+                      <p className="font-medium text-gray-800">Панель менеджера</p>
+                      <p className="text-sm text-gray-500">Управление турами и заказами</p>
+                    </div>
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
           {/* Раздел "Мои заказы" */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex justify-between items-center mb-6">
@@ -444,48 +551,68 @@ export default function ProfilePage() {
             )}
           </div>
           
-          {/* Раздел для администратора и менеджера */}
-          {(session?.user?.role === 'ADMIN' || session?.user?.role === 'MANAGER') && (
-            <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-blue-600">
-              <h2 className="text-xl font-semibold mb-4">Панель управления</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Link
-                  href={session?.user?.role === 'ADMIN' ? "/admin/orders" : "/manager/orders"}
-                  className="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg flex items-center transition-colors"
-                >
-                  <ShoppingCartIcon className="h-5 w-5 text-blue-600 mr-3" />
-                  <div>
-                    <p className="font-medium text-gray-800">Управление заказами</p>
-                    <p className="text-sm text-gray-500">Просмотр и редактирование заказов пользователей</p>
-                  </div>
-                </Link>
-                
-                {session?.user?.role === 'ADMIN' ? (
-                  <Link
-                    href="/admin"
-                    className="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg flex items-center transition-colors"
-                  >
-                    <UserIcon className="h-5 w-5 text-blue-600 mr-3" />
-                    <div>
-                      <p className="font-medium text-gray-800">Панель администратора</p>
-                      <p className="text-sm text-gray-500">Полный доступ к администрированию сайта</p>
-                    </div>
-                  </Link>
-                ) : (
-                  <Link
-                    href="/manager"
-                    className="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg flex items-center transition-colors"
-                  >
-                    <UserIcon className="h-5 w-5 text-blue-600 mr-3" />
-                    <div>
-                      <p className="font-medium text-gray-800">Панель менеджера</p>
-                      <p className="text-sm text-gray-500">Управление турами и заказами</p>
-                    </div>
-                  </Link>
-                )}
-              </div>
+          {/* Раздел "Мои обращения" */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold flex items-center">
+                <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2 text-purple-600" />
+                Мои обращения
+              </h2>
+              <Link 
+                href="/profile/tickets" 
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Просмотреть все
+              </Link>
             </div>
-          )}
+            
+            {loadingTickets ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            ) : lastTicket ? (
+              <div className="border border-gray-100 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-sm font-medium text-gray-800">{lastTicket.subject}</h3>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${getTicketStatusColor(lastTicket.status)}`}>
+                    {getTicketStatusText(lastTicket.status)}
+                  </span>
+                </div>
+                <p className="text-gray-600 text-xs mb-3 line-clamp-2">{lastTicket.message}</p>
+                <div className="flex justify-between items-center text-xs text-gray-500">
+                  <span>ID: {lastTicket.id}</span>
+                  <span>Создан: {formatDate(lastTicket.createdAt)}</span>
+                </div>
+                <div className="mt-3 text-center">
+                  <Link 
+                    href={`/profile/tickets/${lastTicket.id}`} 
+                    className="text-blue-600 hover:text-blue-800 text-sm inline-block"
+                  >
+                    Перейти к обращению
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">У вас пока нет обращений</p>
+                <Link 
+                  href="/profile/tickets/new" 
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
+                >
+                  Создать обращение
+                </Link>
+              </div>
+            )}
+            
+            <div className="mt-4 text-center">
+              <Link 
+                href="/profile/tickets/new" 
+                className="text-blue-600 hover:text-blue-800 text-sm"
+              >
+                Создать новое обращение
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 

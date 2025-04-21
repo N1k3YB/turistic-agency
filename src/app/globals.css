@@ -68,3 +68,7 @@ body {
 .hover-scale:hover img {
   transform: scale(1.05);
 }
+
+button {
+  cursor: pointer;
+}

@@ -64,7 +64,7 @@ export default function ManagerToursPage() {
 
   // Получаем параметр фильтрации по направлению из URL
   useEffect(() => {
-    const destinationId = searchParams?.get('destinationId');
+    const destinationId = searchParams.get('destinationId');
     if (destinationId) {
       const id = parseInt(destinationId);
       if (!isNaN(id) && id > 0) {

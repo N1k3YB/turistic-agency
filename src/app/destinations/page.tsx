@@ -154,19 +154,7 @@ export default function DestinationsPage() {
               )}
             </div>
 
-            {/* Нижняя секция с популярными регионами */}
-            {filteredDestinations.length > 0 && (
-              <div className="mt-16">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Популярные регионы</h2>
-                <div className="flex flex-wrap gap-4 justify-center">
-                  {["Европа", "Азия", "Африка", "Северная Америка", "Южная Америка", "Австралия и Океания"].map((region) => (
-                    <div key={region} className="px-4 py-2 bg-white shadow-sm rounded-full border border-gray-200 hover:border-blue-500 hover:shadow transition-all cursor-pointer">
-                      {region}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            
           </>
         )}
       </div>

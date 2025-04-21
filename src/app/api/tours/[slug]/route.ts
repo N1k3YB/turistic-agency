@@ -9,7 +9,7 @@ interface Params {
 
 export async function GET(request: Request, { params }: Params) {
   try {
-    const slug = params.slug;
+    const slug = await params.slug;
     const session = await getServerSession(authOptions);
 
     // Получаем информацию о туре

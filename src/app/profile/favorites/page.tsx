@@ -173,7 +173,7 @@ export default function FavoritesPage() {
                       </div>
                       <div className="text-right">
                         <span className="text-gray-500 text-sm">Свободных мест:</span>
-                        <p className="text-blue-600 font-medium">{favorite.tour.availableSeats}</p>
+                        <p className="text-sm font-medium">{favorite.tour.availableSeats}</p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-4 border-t border-gray-100">
