@@ -5,6 +5,48 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, CalendarIcon, LockClosedIcon, ShoppingCartIcon, HeartIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
+import ImageWithFallback from "@/components/ImageWithFallback";
+
+// Интерфейсы для данных
+interface Order {
+  id: number;
+  tourId: number;
+  userId: string;
+  quantity: number;
+  totalPrice: string;
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
+  createdAt: string;
+  updatedAt: string;
+  contactPhone: string | null;
+  contactEmail: string;
+  tour: {
+    title: string;
+    imageUrl: string;
+    price: string;
+    currency: string;
+    groupSize: number;
+    nextTourDate: string | null;
+    slug: string;
+  };
+}
+
+interface FavoriteTour {
+  id: number;
+  userId: string;
+  tourId: number;
+  createdAt: string;
+  tour: {
+    id: number;
+    title: string;
+    imageUrl: string;
+    price: string;
+    currency: string;
+    shortDescription: string;
+    groupSize: number;
+    nextTourDate: string | null;
+    slug: string;
+  };
+}
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
@@ -18,6 +60,12 @@ export default function ProfilePage() {
     address: "г. Москва, ул. Ленина, 42", // Моковые данные
     registeredDate: new Date(), // Текущая дата как заглушка
   });
+
+  // Состояния для заказов и избранных туров
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteTour[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [loadingFavorites, setLoadingFavorites] = useState(true);
   
   // Упрощенный интерфейс для пользователя
   useEffect(() => {
@@ -31,8 +79,72 @@ export default function ProfilePage() {
         name: session.user.name || "",
         email: session.user.email || "",
       }));
+
+      // Загружаем заказы и избранные туры
+      fetchOrders();
+      fetchFavorites();
     }
   }, [session, status, router]);
+
+  // Функция для загрузки заказов
+  const fetchOrders = async () => {
+    try {
+      setLoadingOrders(true);
+      const response = await fetch('/api/orders');
+      
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить заказы');
+      }
+      
+      const data = await response.json();
+      setOrders(data);
+    } catch (error) {
+      console.error("Ошибка при загрузке заказов:", error);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  // Функция для загрузки избранных туров
+  const fetchFavorites = async () => {
+    try {
+      setLoadingFavorites(true);
+      const response = await fetch('/api/favorites');
+      
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить избранные туры');
+      }
+      
+      const data = await response.json();
+      setFavorites(data);
+    } catch (error) {
+      console.error("Ошибка при загрузке избранных туров:", error);
+    } finally {
+      setLoadingFavorites(false);
+    }
+  };
+
+  // Форматирование даты
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Даты уточняйте';
+    
+    return new Date(dateString).toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  // Функция для определения статуса заказа
+  const getOrderStatusText = (status: string) => {
+    switch(status) {
+      case 'PENDING': return 'Ожидает подтверждения';
+      case 'CONFIRMED': return 'Подтвержден';
+      case 'CANCELLED': return 'Отменен';
+      case 'COMPLETED': return 'Завершен';
+      default: return 'Статус неизвестен';
+    }
+  };
 
   if (status === "loading") {
     return (
@@ -119,15 +231,58 @@ export default function ProfilePage() {
               </Link>
             </div>
             
-            <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">Здесь будут отображаться ваши заказы</p>
-              <Link 
-                href="/profile/orders" 
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
-              >
-                Перейти к моим заказам
-              </Link>
-            </div>
+            {loadingOrders ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">У вас пока нет заказов</p>
+                <Link 
+                  href="/" 
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
+                >
+                  Перейти к турам
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {orders.slice(0, 3).map((order) => (
+                  <div key={order.id} className="border border-gray-100 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                    <div className="flex items-center">
+                      <div className="h-16 w-16 mr-4 relative rounded-md overflow-hidden flex-shrink-0">
+                        <ImageWithFallback
+                          src={order.tour.imageUrl}
+                          alt={order.tour.title}
+                          layout="fill"
+                          objectFit="cover"
+                          fallbackSrc="/images/image-placeholder.svg"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium text-gray-800 truncate">{order.tour.title}</h3>
+                        <div className="flex items-center text-xs mt-1">
+                          <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs">{getOrderStatusText(order.status)}</span>
+                          <span className="mx-2 text-gray-300">•</span>
+                          <span className="text-gray-500">{formatDate(order.tour.nextTourDate)}</span>
+                        </div>
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="text-xs text-gray-500">{order.quantity} {order.quantity === 1 ? 'место' : order.quantity < 5 ? 'места' : 'мест'}</span>
+                          <span className="font-medium text-sm">{order.totalPrice} {order.tour.currency}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {orders.length > 3 && (
+                  <div className="pt-2 text-center">
+                    <Link href="/profile/orders" className="text-blue-600 hover:text-blue-800 text-sm">
+                      Показать все заказы ({orders.length})
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           {/* Раздел "Избранные туры" */}
@@ -145,15 +300,53 @@ export default function ProfilePage() {
               </Link>
             </div>
             
-            <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">Здесь будут отображаться ваши избранные туры</p>
-              <Link 
-                href="/profile/favorites" 
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
-              >
-                Перейти к избранным турам
-              </Link>
-            </div>
+            {loadingFavorites ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+              </div>
+            ) : favorites.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 mb-4">У вас пока нет избранных туров</p>
+                <Link 
+                  href="/" 
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
+                >
+                  Перейти к турам
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {favorites.slice(0, 3).map((favorite) => (
+                  <Link 
+                    key={favorite.id}
+                    href={`/tours/${favorite.tour.slug}`}
+                    className="block group border border-gray-100 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                  >
+                    <div className="h-32 relative">
+                      <ImageWithFallback
+                        src={favorite.tour.imageUrl}
+                        alt={favorite.tour.title}
+                        layout="fill"
+                        objectFit="cover"
+                        fallbackSrc="/images/image-placeholder.svg"
+                      />
+                    </div>
+                    <div className="p-3">
+                      <h3 className="text-sm font-medium text-gray-800 line-clamp-1 group-hover:text-blue-600 transition-colors">{favorite.tour.title}</h3>
+                      <p className="mt-1 text-xs text-gray-500 line-clamp-1">{formatDate(favorite.tour.nextTourDate)}</p>
+                      <p className="mt-2 text-sm font-bold">{favorite.tour.price} {favorite.tour.currency}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+            {favorites.length > 3 && (
+              <div className="pt-4 text-center">
+                <Link href="/profile/favorites" className="text-blue-600 hover:text-blue-800 text-sm">
+                  Показать все избранные туры ({favorites.length})
+                </Link>
+              </div>
+            )}
           </div>
           
           {/* Раздел для администратора */}

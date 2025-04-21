@@ -53,6 +53,7 @@ interface Tour {
     createdAt: string;
     updatedAt: string;
   };
+  hasOrder: boolean;
 }
 
 export default function TourDetailPage() {
@@ -89,7 +90,7 @@ export default function TourDetailPage() {
           }
           throw new Error('Не удалось загрузить данные тура');
         }
-        const data: Tour = await response.json();
+        const data = await response.json();
         setTour(data);
         
         // Если пользователь авторизован, заполним email из профиля
@@ -248,22 +249,23 @@ export default function TourDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <div className="bg-red-50 p-6 rounded-xl inline-block mx-auto">
-          <ExclamationCircleIcon className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Ошибка</h2>
-          <p className="text-red-600">{error}</p>
-          <Link href="/" className="mt-6 inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors">
-            Вернуться на главную
-          </Link>
-        </div>
+      <div className="container mx-auto px-4 py-12 text-center">
+        <ExclamationCircleIcon className="h-16 w-16 text-red-500 mx-auto mb-4" />
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">Ошибка</h1>
+        <p className="text-gray-600">{error}</p>
+        <Link 
+          href="/"
+          className="inline-block mt-6 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+        >
+          Вернуться на главную
+        </Link>
       </div>
     );
   }
@@ -513,14 +515,30 @@ export default function TourDetailPage() {
               
               {!showOrderForm ? (
                 <>
-                  <button 
-                    className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-colors mb-3 ${tour.availableSeats === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => tour.availableSeats > 0 && setShowOrderForm(true)}
-                    disabled={tour.availableSeats === 0}
-                  >
-                    <ShoppingCartIcon className="h-5 w-5 mr-2" />
-                    {tour.availableSeats > 0 ? 'Забронировать' : 'Нет мест'}
-                  </button>
+                  {tour.hasOrder ? (
+                    <Link 
+                      href="/profile/orders"
+                      className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-colors mb-3"
+                    >
+                      <ShoppingCartIcon className="h-5 w-5 mr-2" />
+                      Перейти к заказу
+                    </Link>
+                  ) : (
+                    <button 
+                      className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-colors mb-3 ${tour.availableSeats === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      onClick={() => {
+                        if (!session) {
+                          router.push('/auth/signin');
+                          return;
+                        }
+                        tour.availableSeats > 0 && setShowOrderForm(true);
+                      }}
+                      disabled={tour.availableSeats === 0}
+                    >
+                      <ShoppingCartIcon className="h-5 w-5 mr-2" />
+                      {tour.availableSeats > 0 ? 'Забронировать' : 'Нет мест'}
+                    </button>
+                  )}
                   
                   <button 
                     className="w-full bg-white border border-gray-300 text-gray-700 font-medium py-3 px-4 rounded-lg flex items-center justify-center hover:bg-gray-50 transition-colors"

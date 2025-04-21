@@ -23,8 +23,9 @@ export async function GET() {
             imageUrl: true,
             price: true,
             currency: true,
-            availableSeats: true,
+            groupSize: true,
             nextTourDate: true,
+            slug: true,
           },
         },
       },
@@ -69,10 +70,26 @@ export async function POST(request: Request) {
       return new NextResponse("Тур не найден", { status: 404 });
     }
 
+    // Получаем общее количество заказанных мест для этого тура
+    const orderedSeats = await prisma.order.aggregate({
+      where: {
+        tourId: parseInt(tourId),
+        status: {
+          in: ['PENDING', 'CONFIRMED']
+        }
+      },
+      _sum: {
+        quantity: true
+      }
+    });
+
+    const totalOrderedSeats = orderedSeats._sum.quantity || 0;
+    const availableSeats = tour.groupSize - totalOrderedSeats;
+
     // Проверяем наличие свободных мест
-    if (tour.availableSeats < quantity) {
+    if (availableSeats < quantity) {
       return new NextResponse(
-        `Недостаточно свободных мест. Доступно: ${tour.availableSeats}`,
+        `Недостаточно свободных мест. Доступно: ${availableSeats}`,
         { status: 400 }
       );
     }
@@ -86,18 +103,6 @@ export async function POST(request: Request) {
         totalPrice: tour.price.mul(quantity),
         contactEmail,
         contactPhone,
-      },
-    });
-
-    // Обновляем количество свободных мест
-    await prisma.tour.update({
-      where: {
-        id: parseInt(tourId),
-      },
-      data: {
-        availableSeats: {
-          decrement: quantity,
-        },
       },
     });
 
