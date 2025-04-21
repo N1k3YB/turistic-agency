@@ -5,6 +5,7 @@ import SessionProvider from "@/components/auth/SessionProvider";
 import Header from "@/components/Header";
 import Link from "next/link";
 import { MapPinIcon, EnvelopeIcon, PhoneIcon } from "@heroicons/react/24/outline";
+import { Toaster } from "react-hot-toast";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -102,6 +103,7 @@ export default function RootLayout({
     <html lang="ru">
       <body className={inter.className}>
         <SessionProvider>
+          <Toaster position="top-center" />
           <Header />
           {children}
           <Footer />

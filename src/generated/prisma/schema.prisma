@@ -40,16 +40,18 @@ model Session {
 }
 
 model User {
-  id             String    @id @default(cuid())
+  id             String     @id @default(cuid())
   name           String?
-  email          String?   @unique
+  email          String?    @unique
   emailVerified  DateTime?
   hashedPassword String?
   image          String?
-  role           UserRole  @default(USER)
+  role           UserRole   @default(USER)
   accounts       Account[]
   sessions       Session[]
   reviews        Review[]
+  favorites      Favorite[]
+  orders         Order[]
 }
 
 model VerificationToken {
@@ -76,8 +78,14 @@ model Tour {
   imageUrls        String[]
   inclusions       String
   itinerary        String
+  duration         Int         @default(7)
+  groupSize        Int         @default(10)
+  availableSeats   Int         @default(10)
+  nextTourDate     DateTime?
   destination      Destination @relation(fields: [destinationId], references: [id])
   reviews          Review[]
+  favorites        Favorite[]
+  orders           Order[]
 }
 
 model Destination {
@@ -104,8 +112,41 @@ model Review {
   user       User     @relation(fields: [userId], references: [id])
 }
 
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  tourId    Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tour      Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tourId])
+}
+
+model Order {
+  id           Int         @id @default(autoincrement())
+  userId       String
+  tourId       Int
+  quantity     Int
+  totalPrice   Decimal
+  status       OrderStatus @default(PENDING)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  contactPhone String?
+  contactEmail String
+  user         User        @relation(fields: [userId], references: [id])
+  tour         Tour        @relation(fields: [tourId], references: [id])
+}
+
 enum UserRole {
   ADMIN
   USER
   MANAGER
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
 }

@@ -268,12 +268,11 @@ const config = {
     "db"
   ],
   "activeProvider": "postgresql",
-  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
         "fromEnvVar": "DATABASE_URL",
-        "value": null
+        "value": "postgresql://tour_company:tour1337@46.226.161.249:5402/tour_company?schema=public"
       }
     }
   },

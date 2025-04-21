@@ -3,14 +3,14 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, CalendarIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, CalendarIcon, LockClosedIcon, ShoppingCartIcon, HeartIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   
-  // Моковые данные для примера
+  // Данные для примера
   const [userData, setUserData] = useState({
     name: "",
     email: "",
@@ -19,31 +19,7 @@ export default function ProfilePage() {
     registeredDate: new Date(), // Текущая дата как заглушка
   });
   
-  // Моковые данные для истории заказов
-  const mockOrders = [
-    {
-      id: "ORD-12345",
-      date: "15.05.2023",
-      destination: "Сочи",
-      status: "Оплачен",
-      amount: "30 000 ₽",
-    },
-    {
-      id: "ORD-12346",
-      date: "20.08.2023",
-      destination: "Алтай",
-      status: "Завершен",
-      amount: "45 000 ₽",
-    },
-    {
-      id: "ORD-12347",
-      date: "10.01.2024",
-      destination: "Золотое кольцо",
-      status: "Забронирован",
-      amount: "25 000 ₽",
-    },
-  ];
-
+  // Упрощенный интерфейс для пользователя
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/signin");
@@ -70,16 +46,17 @@ export default function ProfilePage() {
     <div className="container mx-auto px-4 py-8 min-h-screen">
       <h1 className="text-3xl font-bold text-gray-800 mb-8">Личный кабинет</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Информация о пользователе */}
         <div className="md:col-span-1">
-          <div className="bg-white rounded-lg shadow-md p-6 h-full">
+          <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex flex-col items-center mb-6">
               <div className="bg-blue-100 p-4 rounded-full mb-4">
                 <UserIcon className="h-12 w-12 text-blue-600" />
               </div>
               <h2 className="text-xl font-semibold">{userData.name || "Пользователь"}</h2>
-              <p className="text-sm text-gray-500">Пользователь</p>
+              <p className="text-sm text-gray-500">{session?.user?.role === 'ADMIN' ? 'Администратор' : 
+                session?.user?.role === 'MANAGER' ? 'Менеджер' : 'Пользователь'}</p>
             </div>
             
             <div className="space-y-4">
@@ -125,63 +102,89 @@ export default function ProfilePage() {
           </div>
         </div>
         
-        {/* История заказов */}
-        <div className="md:col-span-2 flex flex-col space-y-6 overflow-auto">
-          <div className="bg-white rounded-lg shadow-md p-6 flex-1">
-            <h2 className="text-xl font-semibold mb-6">История заказов</h2>
-            
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr>
-                    <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Номер</th>
-                    <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
-                    <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Направление</th>
-                    <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
-                    <th className="px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сумма</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {mockOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-blue-600">
-                        <Link href={`#order-${order.id}`}>{order.id}</Link>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{order.date}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{order.destination}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          order.status === "Оплачен" ? "bg-green-100 text-green-800" : 
-                          order.status === "Забронирован" ? "bg-yellow-100 text-yellow-800" : 
-                          "bg-blue-100 text-blue-800"
-                        }`}>
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{order.amount}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* Основные разделы */}
+        <div className="md:col-span-2 flex flex-col space-y-6">
+          {/* Раздел "Мои заказы" */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold flex items-center">
+                <ShoppingCartIcon className="h-5 w-5 mr-2 text-blue-600" />
+                Мои заказы
+              </h2>
+              <Link 
+                href="/profile/orders" 
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Просмотреть все
+              </Link>
             </div>
             
-            {mockOrders.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-gray-500">У вас еще нет заказов</p>
-              </div>
-            )}
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-6">Избранные туры</h2>
-            
             <div className="text-center py-8">
-              <p className="text-gray-500">У вас нет избранных туров</p>
-              <Link href="/" className="mt-2 inline-flex items-center text-blue-600 hover:text-blue-800 font-medium">
-                Перейти к поиску туров
+              <p className="text-gray-500 mb-4">Здесь будут отображаться ваши заказы</p>
+              <Link 
+                href="/profile/orders" 
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
+              >
+                Перейти к моим заказам
               </Link>
             </div>
           </div>
+          
+          {/* Раздел "Избранные туры" */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold flex items-center">
+                <HeartIcon className="h-5 w-5 mr-2 text-red-500" />
+                Избранные туры
+              </h2>
+              <Link 
+                href="/profile/favorites" 
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Просмотреть все
+              </Link>
+            </div>
+            
+            <div className="text-center py-8">
+              <p className="text-gray-500 mb-4">Здесь будут отображаться ваши избранные туры</p>
+              <Link 
+                href="/profile/favorites" 
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
+              >
+                Перейти к избранным турам
+              </Link>
+            </div>
+          </div>
+          
+          {/* Раздел для администратора */}
+          {(session?.user?.role === 'ADMIN' || session?.user?.role === 'MANAGER') && (
+            <div className="bg-white rounded-lg shadow-md p-6 border-t-4 border-blue-600">
+              <h2 className="text-xl font-semibold mb-4">Панель управления</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Link
+                  href="/admin/orders"
+                  className="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg flex items-center transition-colors"
+                >
+                  <ShoppingCartIcon className="h-5 w-5 text-blue-600 mr-3" />
+                  <div>
+                    <p className="font-medium text-gray-800">Управление заказами</p>
+                    <p className="text-sm text-gray-500">Просмотр и редактирование заказов пользователей</p>
+                  </div>
+                </Link>
+                
+                <Link
+                  href="/admin"
+                  className="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg flex items-center transition-colors"
+                >
+                  <UserIcon className="h-5 w-5 text-blue-600 mr-3" />
+                  <div>
+                    <p className="font-medium text-gray-800">Панель администратора</p>
+                    <p className="text-sm text-gray-500">Полный доступ к администрированию сайта</p>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

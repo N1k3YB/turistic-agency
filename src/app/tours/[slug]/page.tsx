@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ImageWithFallback from '@/components/ImageWithFallback';
 import { 
@@ -17,8 +17,11 @@ import {
   ChatBubbleLeftIcon,
   StarIcon
 } from '@heroicons/react/24/outline';
+import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid';
 import ReviewList from '@/components/ReviewList';
 import ReviewForm from '@/components/ReviewForm';
+import { useSession } from 'next-auth/react';
+import toast from 'react-hot-toast';
 
 // Обновленный интерфейс для тура, включая данные направления
 interface Tour {
@@ -36,6 +39,7 @@ interface Tour {
   imageUrls: string[];
   duration: number;
   groupSize: number;
+  availableSeats: number; // Добавлено количество свободных мест
   nextTourDate: string | null;
   createdAt: string;
   updatedAt: string;
@@ -53,6 +57,8 @@ interface Tour {
 
 export default function TourDetailPage() {
   const params = useParams();
+  const router = useRouter();
+  const { data: session } = useSession();
   const slug = params?.slug as string;
   const [tour, setTour] = useState<Tour | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,7 +66,15 @@ export default function TourDetailPage() {
   const [activeTab, setActiveTab] = useState<'description' | 'itinerary' | 'inclusions' | 'gallery' | 'reviews'>('description');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [isInFavorites, setIsInFavorites] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [checkingFavorite, setCheckingFavorite] = useState(true);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Получаем данные о туре
   useEffect(() => {
     if (!slug) return;
 
@@ -77,6 +91,11 @@ export default function TourDetailPage() {
         }
         const data: Tour = await response.json();
         setTour(data);
+        
+        // Если пользователь авторизован, заполним email из профиля
+        if (session?.user?.email) {
+          setContactEmail(session.user.email);
+        }
       } catch (err: any) {
         setError(err.message || 'Произошла ошибка при загрузке');
       } finally {
@@ -85,7 +104,146 @@ export default function TourDetailPage() {
     };
 
     fetchTour();
-  }, [slug]);
+  }, [slug, session]);
+
+  // Проверяем, добавлен ли тур в избранное
+  useEffect(() => {
+    if (!session?.user || !tour) {
+      setCheckingFavorite(false);
+      return;
+    }
+
+    const checkIfFavorite = async () => {
+      try {
+        setCheckingFavorite(true);
+        const response = await fetch('/api/favorites');
+        if (response.ok) {
+          const favorites = await response.json();
+          const isFavorite = favorites.some((fav: any) => fav.tourId === tour.id);
+          setIsInFavorites(isFavorite);
+        }
+      } catch (error) {
+        console.error("Ошибка при проверке избранного:", error);
+      } finally {
+        setCheckingFavorite(false);
+      }
+    };
+
+    checkIfFavorite();
+  }, [session, tour]);
+
+  // Функция для добавления/удаления из избранного
+  const toggleFavorite = async () => {
+    if (!session) {
+      toast.error("Необходимо войти в систему");
+      router.push('/auth/signin');
+      return;
+    }
+
+    if (!tour) return;
+
+    try {
+      if (isInFavorites) {
+        // Удаляем из избранного
+        const response = await fetch(`/api/favorites?tourId=${tour.id}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          setIsInFavorites(false);
+          toast.success("Тур удален из избранного");
+        } else {
+          toast.error("Не удалось удалить из избранного");
+        }
+      } else {
+        // Добавляем в избранное
+        const response = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ tourId: tour.id }),
+        });
+        
+        if (response.ok) {
+          setIsInFavorites(true);
+          toast.success("Тур добавлен в избранное");
+        } else {
+          toast.error("Не удалось добавить в избранное");
+        }
+      }
+    } catch (error) {
+      console.error("Ошибка при изменении избранного:", error);
+      toast.error("Произошла ошибка");
+    }
+  };
+
+  // Функция для создания заказа
+  const createOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!session) {
+      toast.error("Необходимо войти в систему");
+      router.push('/auth/signin');
+      return;
+    }
+
+    if (!tour) return;
+
+    // Проверяем данные формы
+    if (!contactEmail) {
+      toast.error("Укажите email для связи");
+      return;
+    }
+
+    if (quantity < 1) {
+      toast.error("Укажите корректное количество мест");
+      return;
+    }
+
+    if (quantity > tour.availableSeats) {
+      toast.error(`Недостаточно свободных мест. Доступно: ${tour.availableSeats}`);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tourId: tour.id,
+          quantity,
+          contactEmail,
+          contactPhone,
+        }),
+      });
+      
+      if (response.ok) {
+        toast.success("Заказ успешно создан");
+        setShowOrderForm(false);
+        // Обновляем данные о свободных местах
+        setTour({
+          ...tour,
+          availableSeats: tour.availableSeats - quantity
+        });
+        // Сбрасываем форму
+        setQuantity(1);
+        // Перенаправляем на страницу профиля с заказами
+        router.push('/profile/orders');
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || "Не удалось создать заказ");
+      }
+    } catch (error) {
+      console.error("Ошибка при создании заказа:", error);
+      toast.error("Произошла ошибка при создании заказа");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -347,17 +505,101 @@ export default function TourDetailPage() {
                       : 'Уточняйте у менеджера'}
                   </span>
                 </div>
+                <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                  <span className="text-gray-600">Свободных мест:</span>
+                  <span className="font-medium text-blue-600">{tour.availableSeats}</span>
+                </div>
               </div>
               
-              <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-colors mb-3">
-                <ShoppingCartIcon className="h-5 w-5 mr-2" />
-                Забронировать
-              </button>
-              
-              <button className="w-full bg-white border border-gray-300 text-gray-700 font-medium py-3 px-4 rounded-lg flex items-center justify-center hover:bg-gray-50 transition-colors">
-                <HeartIcon className="h-5 w-5 mr-2" />
-                Добавить в избранное
-              </button>
+              {!showOrderForm ? (
+                <>
+                  <button 
+                    className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-colors mb-3 ${tour.availableSeats === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => tour.availableSeats > 0 && setShowOrderForm(true)}
+                    disabled={tour.availableSeats === 0}
+                  >
+                    <ShoppingCartIcon className="h-5 w-5 mr-2" />
+                    {tour.availableSeats > 0 ? 'Забронировать' : 'Нет мест'}
+                  </button>
+                  
+                  <button 
+                    className="w-full bg-white border border-gray-300 text-gray-700 font-medium py-3 px-4 rounded-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
+                    onClick={toggleFavorite}
+                    disabled={checkingFavorite}
+                  >
+                    {isInFavorites ? (
+                      <>
+                        <HeartIconSolid className="h-5 w-5 mr-2 text-red-500" />
+                        В избранном
+                      </>
+                    ) : (
+                      <>
+                        <HeartIcon className="h-5 w-5 mr-2" />
+                        Добавить в избранное
+                      </>
+                    )}
+                  </button>
+                </>
+              ) : (
+                <form onSubmit={createOrder} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Количество мест</label>
+                    <input 
+                      type="number" 
+                      min={1} 
+                      max={tour.availableSeats}
+                      value={quantity} 
+                      onChange={(e) => setQuantity(parseInt(e.target.value))}
+                      className="w-full border border-gray-300 rounded-lg p-2"
+                      required
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Максимум {tour.availableSeats}</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email для связи</label>
+                    <input 
+                      type="email" 
+                      value={contactEmail} 
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg p-2"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Телефон (опционально)</label>
+                    <input 
+                      type="tel" 
+                      value={contactPhone} 
+                      onChange={(e) => setContactPhone(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg p-2"
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between font-medium text-lg pt-2 border-t border-gray-200">
+                    <span>Итого:</span>
+                    <span className="text-blue-600">{(parseFloat(tour.price) * quantity).toFixed(2)} {tour.currency}</span>
+                  </div>
+                  
+                  <div className="flex space-x-3">
+                    <button 
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-colors"
+                    >
+                      {isSubmitting ? 'Обработка...' : 'Забронировать'}
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setShowOrderForm(false)}
+                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors"
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
             
             <div className="bg-blue-50 p-6 rounded-xl border border-blue-100">
