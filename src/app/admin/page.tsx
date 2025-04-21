@@ -22,14 +22,6 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("dashboard");
   
-  // Моковые данные для примера
-  const mockUsers = [
-    { id: "USR-001", name: "Иван Иванов", email: "ivan@example.com", role: "USER", registeredDate: "01.01.2023" },
-    { id: "USR-002", name: "Менеджер", email: "manager@example.com", role: "MANAGER", registeredDate: "15.02.2023" },
-    { id: "USR-003", name: "Ольга Петрова", email: "olga@example.com", role: "USER", registeredDate: "20.03.2023" },
-    { id: "USR-004", name: "Администратор", email: "admin@example.com", role: "ADMIN", registeredDate: "01.12.2022" },
-  ];
-  
   const mockStatistics = {
     users: 350,
     orders: 1280,
@@ -128,14 +120,14 @@ export default function AdminDashboardPage() {
                 <div className="flex space-x-2">
                   <Link 
                     href="/admin/destinations"
-                    className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                    className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors cursor-pointer"
                   >
                     <MapIcon className="h-4 w-4 mr-1" />
                     Управление направлениями
                   </Link>
                   <Link 
                     href="/admin/tours"
-                    className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                    className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors cursor-pointer"
                   >
                     <GlobeAltIcon className="h-4 w-4 mr-1" />
                     Управление турами
@@ -162,72 +154,12 @@ export default function AdminDashboardPage() {
                 <div className="mt-4">
                   <Link 
                     href="/admin/orders"
-                    className="w-full flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                    className="w-full flex items-center justify-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors cursor-pointer"
                   >
                     <ShoppingBagIcon className="h-4 w-4 mr-1" />
                     Просмотр заказов
                   </Link>
                 </div>
-              </div>
-            </div>
-          </div>
-        );
-      
-      case "users":
-        return (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-800">Управление пользователями</h2>
-              <button className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
-                <PlusCircleIcon className="h-4 w-4 mr-1" />
-                Добавить пользователя
-              </button>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Имя</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Роль</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата регистрации</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {mockUsers.map((user) => (
-                      <tr key={user.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.id}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            user.role === "ADMIN" ? "bg-purple-100 text-purple-800" : 
-                            user.role === "MANAGER" ? "bg-blue-100 text-blue-800" : 
-                            "bg-gray-100 text-gray-800"
-                          }`}>
-                            {user.role === "ADMIN" ? "Администратор" : 
-                             user.role === "MANAGER" ? "Менеджер" : "Пользователь"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.registeredDate}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex space-x-2">
-                            <button className="text-blue-600 hover:text-blue-800">
-                              <PencilIcon className="h-5 w-5" />
-                            </button>
-                            <button className="text-red-600 hover:text-red-800">
-                              <TrashIcon className="h-5 w-5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
             </div>
           </div>
@@ -243,14 +175,14 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 min-h-screen">
       <h1 className="text-3xl font-bold text-gray-800 mb-2">Панель администратора</h1>
       <p className="text-gray-600 mb-8">Управление сайтом и всеми функциями</p>
       
-      <div className="flex flex-col md:flex-row gap-6">
+      <div className="flex flex-col md:flex-row gap-6 h-[calc(100vh-200px)]">
         {/* Боковое меню */}
         <div className="w-full md:w-64 mb-6 md:mb-0">
-          <div className="bg-white rounded-lg shadow">
+          <div className="bg-white rounded-lg shadow h-full">
             <div className="p-4 border-b">
               <div className="flex items-center">
                 <div className="bg-purple-100 p-2 rounded-full">
@@ -279,17 +211,13 @@ export default function AdminDashboardPage() {
                   </button>
                 </li>
                 <li>
-                  <button 
-                    className={`w-full flex items-center px-4 py-2 rounded-md text-left ${
-                      activeTab === "users" 
-                        ? "bg-blue-100 text-blue-700" 
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setActiveTab("users")}
+                  <Link 
+                    href="/admin/users"
+                    className="w-full flex items-center px-4 py-2 rounded-md text-left text-gray-700 hover:bg-gray-100 cursor-pointer"
                   >
                     <UsersIcon className="h-5 w-5 mr-3" />
                     Пользователи
-                  </button>
+                  </Link>
                 </li>
                 <li>
                   <button 
@@ -331,10 +259,11 @@ export default function AdminDashboardPage() {
                   </button>
                 </li>
                 <li>
-                  <Link href="/admin/reviews"
-                    className={`w-full flex items-center p-3 rounded-md text-gray-700 hover:bg-gray-50`}
+                  <Link 
+                    href="/admin/reviews"
+                    className="w-full flex items-center px-4 py-2 rounded-md text-left text-gray-700 hover:bg-gray-100"
                   >
-                    <ChatBubbleLeftIcon className="h-5 w-5 mr-2" />
+                    <ChatBubbleLeftIcon className="h-5 w-5 mr-3" />
                     Модерация отзывов
                   </Link>
                 </li>
@@ -344,7 +273,7 @@ export default function AdminDashboardPage() {
         </div>
         
         {/* Основной контент */}
-        <div className="flex-1">
+        <div className="flex-1 overflow-auto">
           {renderTabContent()}
         </div>
       </div>

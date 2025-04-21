@@ -67,13 +67,13 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 min-h-screen">
       <h1 className="text-3xl font-bold text-gray-800 mb-8">Личный кабинет</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
         {/* Информация о пользователе */}
         <div className="md:col-span-1">
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-white rounded-lg shadow-md p-6 h-full">
             <div className="flex flex-col items-center mb-6">
               <div className="bg-blue-100 p-4 rounded-full mb-4">
                 <UserIcon className="h-12 w-12 text-blue-600" />
@@ -126,8 +126,8 @@ export default function ProfilePage() {
         </div>
         
         {/* История заказов */}
-        <div className="md:col-span-2">
-          <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="md:col-span-2 flex flex-col space-y-6 overflow-auto">
+          <div className="bg-white rounded-lg shadow-md p-6 flex-1">
             <h2 className="text-xl font-semibold mb-6">История заказов</h2>
             
             <div className="overflow-x-auto">
@@ -172,7 +172,7 @@ export default function ProfilePage() {
             )}
           </div>
           
-          <div className="mt-6 bg-white rounded-lg shadow-md p-6">
+          <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold mb-6">Избранные туры</h2>
             
             <div className="text-center py-8">

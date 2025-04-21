@@ -353,14 +353,14 @@ export default function ManagerDashboardPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 min-h-screen">
       <h1 className="text-3xl font-bold text-gray-800 mb-2">Панель менеджера</h1>
-      <p className="text-gray-600 mb-8">Управление заказами и запросами клиентов</p>
+      <p className="text-gray-600 mb-8">Управление заказами и обращениями клиентов</p>
       
-      <div className="flex flex-col md:flex-row gap-6">
+      <div className="flex flex-col md:flex-row gap-6 h-[calc(100vh-200px)]">
         {/* Боковое меню */}
-        <div className="md:w-64 flex-shrink-0">
-          <div className="bg-white rounded-lg shadow-md">
+        <div className="w-full md:w-64 mb-6 md:mb-0">
+          <div className="bg-white rounded-lg shadow h-full">
             <div className="p-4 border-b">
               <div className="flex items-center">
                 <div className="bg-blue-100 p-2 rounded-full">
@@ -411,7 +411,20 @@ export default function ManagerDashboardPage() {
                     onClick={() => setActiveTab("requests")}
                   >
                     <ChatBubbleLeftIcon className="h-5 w-5 mr-3" />
-                    Запросы клиентов
+                    Обращения клиентов
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    className={`w-full flex items-center px-4 py-2 rounded-md text-left ${
+                      activeTab === "destinations" 
+                        ? "bg-blue-100 text-blue-700" 
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                    onClick={() => setActiveTab("destinations")}
+                  >
+                    <MapIcon className="h-5 w-5 mr-3" />
+                    Направления
                   </button>
                 </li>
                 <li>
@@ -433,7 +446,7 @@ export default function ManagerDashboardPage() {
         </div>
         
         {/* Основной контент */}
-        <div className="flex-1">
+        <div className="flex-1 overflow-auto">
           {renderTabContent()}
         </div>
       </div>

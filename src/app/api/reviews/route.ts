@@ -87,6 +87,21 @@ export async function POST(req: Request) {
       );
     }
     
+    // Проверка, оставлял ли пользователь уже отзыв для этого тура
+    const existingReview = await prisma.review.findFirst({
+      where: {
+        tourId,
+        userId: session.user.id
+      }
+    });
+    
+    if (existingReview) {
+      return NextResponse.json(
+        { error: 'Вы уже оставили отзыв для этого тура' }, 
+        { status: 400 }
+      );
+    }
+    
     // Создание отзыва
     const review = await prisma.review.create({
       data: {
