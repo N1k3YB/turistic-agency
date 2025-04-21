@@ -4,6 +4,7 @@ import { ru } from 'date-fns/locale';
 import { StarIcon } from '@heroicons/react/24/solid';
 import { UserCircleIcon } from '@heroicons/react/24/outline';
 import Image from 'next/image';
+import { useSession } from 'next-auth/react';
 
 interface User {
   name: string | null;
@@ -15,6 +16,7 @@ interface Review {
   rating: number;
   comment: string;
   createdAt: string;
+  userId: string;
   user: User;
 }
 
@@ -27,13 +29,17 @@ export default function ReviewList({ tourId, refreshTrigger = 0 }: ReviewListPro
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { data: session } = useSession();
+  const [userReviewPending, setUserReviewPending] = useState(false);
 
   useEffect(() => {
     const fetchReviews = async () => {
       setLoading(true);
       setError(null);
+      setUserReviewPending(false);
       
       try {
+        // Получаем одобренные отзывы
         const response = await fetch(`/api/reviews?tourId=${tourId}`);
         
         if (!response.ok) {
@@ -42,6 +48,17 @@ export default function ReviewList({ tourId, refreshTrigger = 0 }: ReviewListPro
         
         const data = await response.json();
         setReviews(data);
+
+        // Если пользователь авторизован, проверяем есть ли у него ожидающий отзыв
+        if (session?.user?.id) {
+          const pendingResponse = await fetch(`/api/reviews/pending?tourId=${tourId}`);
+          if (pendingResponse.ok) {
+            const pendingData = await pendingResponse.json();
+            if (pendingData.hasPendingReview) {
+              setUserReviewPending(true);
+            }
+          }
+        }
       } catch (err: any) {
         setError(err.message);
         console.error('Ошибка при загрузке отзывов:', err);
@@ -51,7 +68,7 @@ export default function ReviewList({ tourId, refreshTrigger = 0 }: ReviewListPro
     };
     
     fetchReviews();
-  }, [tourId, refreshTrigger]);
+  }, [tourId, refreshTrigger, session]);
 
   if (loading) {
     return (
@@ -95,6 +112,75 @@ export default function ReviewList({ tourId, refreshTrigger = 0 }: ReviewListPro
     reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
   ).toFixed(1);
 
+  // Функция для сортировки отзывов - отзыв пользователя должен быть первым
+  const sortedReviews = [...reviews].sort((a, b) => {
+    if (session?.user?.id) {
+      if (a.userId === session.user.id) return -1;
+      if (b.userId === session.user.id) return 1;
+    }
+    // Если не отзыв пользователя, сортируем по дате (более новые - сверху)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  // Отображаем сообщение о том, что отзыв отправлен на модерацию
+  if (userReviewPending) {
+    return (
+      <div className="bg-white rounded-lg p-6 shadow-sm mb-8">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Отзывы</h3>
+        <div className="bg-blue-50 text-blue-800 p-4 rounded-lg mb-6">
+          Ваш отзыв успешно отправлен и будет опубликован после проверки модератором.
+        </div>
+        {reviews.length > 0 && (
+          <div className="space-y-8">
+            {sortedReviews.map((review) => (
+              <div 
+                key={review.id} 
+                className={`border-b border-gray-100 pb-6 last:border-b-0 last:pb-0 ${
+                  session?.user?.id === review.userId ? 'bg-blue-50 p-4 rounded-lg border border-blue-100' : ''
+                }`}
+              >
+                <div className="flex items-center mb-3">
+                  {review.user.image ? (
+                    <Image
+                      src={review.user.image}
+                      alt={review.user.name || 'Пользователь'}
+                      width={40}
+                      height={40}
+                      className="rounded-full mr-3"
+                    />
+                  ) : (
+                    <UserCircleIcon className="h-10 w-10 text-gray-400 mr-3" />
+                  )}
+                  <div>
+                    <div className="font-medium text-gray-800">
+                      {review.userId === session?.user?.id ? 'Вы' : review.user.name || 'Пользователь'}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {format(new Date(review.createdAt), 'd MMMM yyyy', { locale: ru })}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex mb-3">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <StarIcon
+                      key={star}
+                      className={`h-5 w-5 ${
+                        star <= review.rating ? 'text-yellow-400' : 'text-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+                
+                <p className="text-gray-700 whitespace-pre-line">{review.comment}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-lg p-6 shadow-sm mb-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
@@ -117,8 +203,13 @@ export default function ReviewList({ tourId, refreshTrigger = 0 }: ReviewListPro
       </div>
 
       <div className="space-y-8">
-        {reviews.map((review) => (
-          <div key={review.id} className="border-b border-gray-100 pb-6 last:border-b-0 last:pb-0">
+        {sortedReviews.map((review) => (
+          <div 
+            key={review.id} 
+            className={`border-b border-gray-100 pb-6 last:border-b-0 last:pb-0 ${
+              session?.user?.id === review.userId ? 'bg-blue-50 p-4 rounded-lg border border-blue-100' : ''
+            }`}
+          >
             <div className="flex items-center mb-3">
               {review.user.image ? (
                 <Image
@@ -133,7 +224,7 @@ export default function ReviewList({ tourId, refreshTrigger = 0 }: ReviewListPro
               )}
               <div>
                 <div className="font-medium text-gray-800">
-                  {review.user.name || 'Пользователь'}
+                  {review.userId === session?.user?.id ? 'Вы' : review.user.name || 'Пользователь'}
                 </div>
                 <div className="text-sm text-gray-500">
                   {format(new Date(review.createdAt), 'd MMMM yyyy', { locale: ru })}

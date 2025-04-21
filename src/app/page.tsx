@@ -109,9 +109,6 @@ export default function Home() {
             <button className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-full font-semibold text-lg transition-colors shadow-lg">
               Подобрать тур
             </button>
-            <button className="bg-transparent hover:bg-white/10 border-2 border-white px-6 py-3 rounded-full font-semibold text-lg transition-colors">
-              Популярные направления
-            </button>
           </div>
         </div>
       </section>

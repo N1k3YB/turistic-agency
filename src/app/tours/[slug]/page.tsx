@@ -34,6 +34,9 @@ interface Tour {
   inclusions: string;
   exclusions: string;
   imageUrls: string[];
+  duration: number;
+  groupSize: number;
+  nextTourDate: string | null;
   createdAt: string;
   updatedAt: string;
   destinationId: number;
@@ -56,6 +59,7 @@ export default function TourDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'description' | 'itinerary' | 'inclusions' | 'gallery' | 'reviews'>('description');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -170,11 +174,11 @@ export default function TourDetailPage() {
                 </Link>
                 <div className="bg-white/10 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm flex items-center">
                   <ClockIcon className="h-4 w-4 mr-1" />
-                  7 дней
+                  {tour.duration} {tour.duration === 1 ? 'день' : (tour.duration >= 2 && tour.duration <= 4) ? 'дня' : 'дней'}
                 </div>
                 <div className="bg-white/10 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm flex items-center">
                   <UsersIcon className="h-4 w-4 mr-1" />
-                  2-10 чел.
+                  до {tour.groupSize} чел.
                 </div>
               </div>
               <h1 className="text-3xl md:text-5xl font-bold text-white text-shadow mb-2">{tour.title}</h1>
@@ -195,7 +199,7 @@ export default function TourDetailPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 min-h-screen">
         <div className="bg-white rounded-xl shadow-md overflow-hidden mb-8 sticky top-16 z-30">
           <div className="flex overflow-x-auto">
             <button 
@@ -305,15 +309,18 @@ export default function TourDetailPage() {
 
             {activeTab === 'reviews' && (
               <div className="space-y-6">
-                <ReviewList tourId={tour.id} refreshTrigger={0} />
-                <ReviewForm tourId={tour.id} />
+                <ReviewList tourId={tour.id} refreshTrigger={reviewSubmitted ? 1 : 0} />
+                <ReviewForm 
+                  tourId={tour.id} 
+                  onSuccess={() => setReviewSubmitted(true)}
+                />
               </div>
             )}
           </div>
 
           {/* Правая колонка: Цена, Заказ */}
           <aside className="lg:col-span-1 space-y-6">
-            <div className="sticky top-28 bg-white p-6 rounded-xl shadow-md border border-gray-100">
+            <div className=" top-28 bg-white p-6 rounded-xl shadow-md border border-gray-100">
               <h2 className="text-3xl font-bold mb-2 text-gray-900">
                 {tour.price} {tour.currency}
               </h2>
@@ -322,15 +329,23 @@ export default function TourDetailPage() {
               <div className="space-y-4 mb-6">
                 <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                   <span className="text-gray-600">Длительность:</span>
-                  <span className="font-medium">7 дней</span>
+                  <span className="font-medium">{tour.duration} {tour.duration === 1 ? 'день' : (tour.duration >= 2 && tour.duration <= 4) ? 'дня' : 'дней'}</span>
                 </div>
                 <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                   <span className="text-gray-600">Группа:</span>
-                  <span className="font-medium">до 10 человек</span>
+                  <span className="font-medium">до {tour.groupSize} человек</span>
                 </div>
                 <div className="flex justify-between items-center pb-2 border-b border-gray-100">
                   <span className="text-gray-600">Ближайшая дата:</span>
-                  <span className="font-medium">15.06.2023</span>
+                  <span className="font-medium">
+                    {tour.nextTourDate 
+                      ? new Date(tour.nextTourDate).toLocaleDateString('ru-RU', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        }) 
+                      : 'Уточняйте у менеджера'}
+                  </span>
                 </div>
               </div>
               

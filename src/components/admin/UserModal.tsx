@@ -11,6 +11,7 @@ interface UserModalProps {
     name?: string;
     email?: string;
     role?: UserRole;
+    error?: string;
   } | null;
   onSave: (userData: {
     id?: string;
@@ -26,7 +27,7 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.USER);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   
   // Сбрасываем форму при открытии/закрытии или изменении пользователя
   useEffect(() => {
@@ -35,48 +36,162 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
       setEmail(user.email || '');
       setPassword('');
       setRole(user.role || UserRole.USER);
+      
+      // Устанавливаем ошибку из пропсов, если она есть
+      if (user.error) {
+        parseApiError(user.error);
+      } else {
+        setErrors({});
+      }
     } else {
       setName('');
       setEmail('');
       setPassword('');
       setRole(UserRole.USER);
+      setErrors({});
     }
-    setError(null);
   }, [user, isOpen]);
   
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Валидация
-    if (!name.trim()) {
-      setError('Необходимо указать имя');
-      return;
+  // Парсинг ошибки API и преобразование в объект ошибок по полям
+  const parseApiError = (error: string) => {
+    // Проверяем, является ли ошибка объектом с ошибками валидации
+    try {
+      const errorObj = JSON.parse(error);
+      if (typeof errorObj === 'object' && errorObj !== null) {
+        const newErrors: Record<string, string> = {};
+        
+        // Формируем понятные сообщения об ошибках
+        Object.entries(errorObj).forEach(([key, value]) => {
+          switch (key) {
+            case 'name':
+              newErrors.name = Array.isArray(value) ? value[0] : 'Некорректное имя';
+              break;
+            case 'email':
+              newErrors.email = Array.isArray(value) ? value[0] : 'Некорректный email';
+              break;
+            case 'password':
+              newErrors.password = Array.isArray(value) ? value[0] : 'Некорректный пароль';
+              break;
+            case 'role':
+              newErrors.role = Array.isArray(value) ? value[0] : 'Некорректная роль';
+              break;
+            default:
+              // Для общих ошибок или неизвестных полей
+              newErrors.general = Array.isArray(value) ? value[0] : String(value);
+          }
+        });
+        
+        setErrors(newErrors);
+        return;
+      }
+    } catch (e) {
+      // Если ошибка не в формате JSON, используем как общую ошибку
     }
     
-    if (!email.trim()) {
-      setError('Необходимо указать email');
-      return;
+    // Если не удалось распарсить или это просто строка
+    setErrors({ general: error });
+  };
+  
+  // Валидация отдельных полей
+  const validateName = (value: string) => {
+    if (!value.trim()) {
+      return 'Необходимо указать имя';
     }
-    
-    if (!user?.id && !password.trim()) {
-      setError('Необходимо указать пароль');
-      return;
+    return '';
+  };
+  
+  const validateEmail = (value: string) => {
+    if (!value.trim()) {
+      return 'Необходимо указать email';
     }
     
     // Валидация email с помощью регулярного выражения
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Некорректный формат email');
+    if (!emailRegex.test(value)) {
+      return 'Некорректный формат email';
+    }
+    return '';
+  };
+  
+  const validatePassword = (value: string) => {
+    // Если это создание нового пользователя (нет id)
+    if (!user?.id && !value.trim()) {
+      return 'Необходимо указать пароль';
+    }
+    
+    // Если пароль был введен (для нового пользователя или изменения существующего)
+    if (value.trim() && value.length < 6) {
+      return 'Пароль должен содержать минимум 6 символов';
+    }
+    
+    return '';
+  };
+  
+  // Обработчики изменения с валидацией
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setName(newName);
+    
+    const nameError = validateName(newName);
+    setErrors(prev => ({
+      ...prev,
+      name: nameError
+    }));
+  };
+  
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value;
+    setEmail(newEmail);
+    
+    const emailError = validateEmail(newEmail);
+    setErrors(prev => ({
+      ...prev,
+      email: emailError
+    }));
+  };
+  
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+    
+    const passwordError = validatePassword(newPassword);
+    setErrors(prev => ({
+      ...prev,
+      password: passwordError
+    }));
+  };
+  
+  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setRole(e.target.value as UserRole);
+  };
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Полная валидация всех полей перед отправкой
+    const nameError = validateName(name);
+    const emailError = validateEmail(email);
+    const passwordError = validatePassword(password);
+    
+    const newErrors = {
+      name: nameError,
+      email: emailError,
+      password: passwordError
+    };
+    
+    // Фильтруем пустые ошибки
+    const validationErrors = Object.fromEntries(
+      Object.entries(newErrors).filter(([_, value]) => value !== '')
+    );
+    
+    setErrors(validationErrors);
+    
+    // Проверяем наличие ошибок
+    if (Object.keys(validationErrors).length > 0) {
       return;
     }
     
-    // Валидация пароля - только если он был введен
-    if (password && password.length < 6) {
-      setError('Пароль должен содержать минимум 6 символов');
-      return;
-    }
-    
-    // Формирование данных
+    // Если ошибок нет, отправляем данные
     const userData = {
       ...(user?.id && { id: user.id }),
       name: name.trim(),
@@ -87,6 +202,9 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
     
     onSave(userData);
   };
+  
+  // Проверка на наличие ошибок для блокировки кнопки сохранения
+  const isSaveDisabled = Object.values(errors).some(error => error !== '');
   
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -130,13 +248,13 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
                 </Dialog.Title>
                 
                 <form onSubmit={handleSubmit} className="mt-4">
-                  {error && (
+                  {errors.general && (
                     <div className="mb-4 bg-red-50 text-red-600 p-4 rounded-md">
                       <div className="flex items-start">
                         <ExclamationCircleIcon className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
                         <div>
                           <h4 className="font-semibold text-sm mb-1">Ошибка при сохранении пользователя</h4>
-                          <p className="text-sm">{error}</p>
+                          <p className="text-sm">{errors.general}</p>
                         </div>
                       </div>
                     </div>
@@ -149,11 +267,14 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
                     <input
                       type="text"
                       id="name"
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                      className={`w-full rounded-md border ${errors.name ? 'border-red-500' : 'border-gray-300'} px-3 py-2 focus:border-blue-500 focus:ring-blue-500`}
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={handleNameChange}
                       required
                     />
+                    {errors.name && (
+                      <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                    )}
                   </div>
                   
                   <div className="mb-4">
@@ -163,11 +284,14 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
                     <input
                       type="email"
                       id="email"
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                      className={`w-full rounded-md border ${errors.email ? 'border-red-500' : 'border-gray-300'} px-3 py-2 focus:border-blue-500 focus:ring-blue-500`}
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={handleEmailChange}
                       required
                     />
+                    {errors.email && (
+                      <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                    )}
                   </div>
                   
                   <div className="mb-4">
@@ -177,11 +301,14 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
                     <input
                       type="password"
                       id="password"
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                      className={`w-full rounded-md border ${errors.password ? 'border-red-500' : 'border-gray-300'} px-3 py-2 focus:border-blue-500 focus:ring-blue-500`}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={handlePasswordChange}
                       {...(!user?.id && { required: true })}
                     />
+                    {errors.password && (
+                      <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                    )}
                   </div>
                   
                   <div className="mb-6">
@@ -190,15 +317,18 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
                     </label>
                     <select
                       id="role"
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+                      className={`w-full rounded-md border ${errors.role ? 'border-red-500' : 'border-gray-300'} px-3 py-2 focus:border-blue-500 focus:ring-blue-500`}
                       value={role}
-                      onChange={(e) => setRole(e.target.value as UserRole)}
+                      onChange={handleRoleChange}
                       required
                     >
                       <option value="USER">Пользователь</option>
                       <option value="MANAGER">Менеджер</option>
                       <option value="ADMIN">Администратор</option>
                     </select>
+                    {errors.role && (
+                      <p className="mt-1 text-sm text-red-600">{errors.role}</p>
+                    )}
                   </div>
                   
                   <div className="flex justify-end space-x-3">
@@ -211,7 +341,12 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
+                      disabled={isSaveDisabled}
+                      className={`px-4 py-2 rounded-md
+                        ${isSaveDisabled
+                          ? "bg-gray-400 text-white cursor-not-allowed" 
+                          : "bg-blue-600 text-white hover:bg-blue-700 transition-colors cursor-pointer"
+                        }`}
                     >
                       {user?.id ? 'Сохранить' : 'Создать'}
                     </button>

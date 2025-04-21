@@ -39,7 +39,13 @@ export async function GET(req: Request) {
       }
     });
     
-    return NextResponse.json(reviews);
+    // Включаем userId в отзыв для возможности определения собственного отзыва
+    const reviewsWithUserId = reviews.map(review => ({
+      ...review,
+      userId: review.userId, // Добавляем поле userId в ответ
+    }));
+    
+    return NextResponse.json(reviewsWithUserId);
   } catch (error) {
     console.error('Ошибка при получении отзывов:', error);
     return NextResponse.json(

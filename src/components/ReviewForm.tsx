@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StarIcon as StarOutline } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import { useSession } from 'next-auth/react';
@@ -16,6 +16,33 @@ export default function ReviewForm({ tourId, onSuccess }: ReviewFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [hasReview, setHasReview] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Проверяем, есть ли у пользователя отзыв, одобренный или неодобренный
+    const checkUserReview = async () => {
+      if (!session?.user?.id) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/reviews/pending?tourId=${tourId}`);
+        if (response.ok) {
+          const data = await response.json();
+          // Если у пользователя есть отзыв в любом статусе, не показываем форму
+          setHasReview(data.hasPendingReview || data.hasApprovedReview);
+        }
+      } catch (error) {
+        console.error('Ошибка при проверке отзывов пользователя:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkUserReview();
+  }, [session, tourId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +82,7 @@ export default function ReviewForm({ tourId, onSuccess }: ReviewFormProps) {
       setSuccess('Ваш отзыв успешно отправлен и будет опубликован после проверки модератором');
       setRating(0);
       setComment('');
+      setHasReview(true);
       
       if (onSuccess) {
         onSuccess();
@@ -66,6 +94,7 @@ export default function ReviewForm({ tourId, onSuccess }: ReviewFormProps) {
     }
   };
 
+  // Если пользователь не авторизован, показываем сообщение с призывом авторизоваться
   if (!session) {
     return (
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8">
@@ -73,6 +102,23 @@ export default function ReviewForm({ tourId, onSuccess }: ReviewFormProps) {
         <p className="text-gray-600 mb-4">Чтобы оставить отзыв, необходимо <a href="/auth/signin" className="text-blue-600 hover:underline">войти в аккаунт</a>.</p>
       </div>
     );
+  }
+
+  // Если данные загружаются, показываем индикатор загрузки
+  if (isLoading) {
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8 shadow-sm animate-pulse">
+        <div className="h-5 bg-gray-200 rounded w-1/3 mb-6"></div>
+        <div className="h-4 bg-gray-200 rounded w-full mb-4"></div>
+        <div className="h-4 bg-gray-200 rounded w-2/3 mb-6"></div>
+        <div className="h-10 bg-gray-200 rounded w-1/3"></div>
+      </div>
+    );
+  }
+  
+  // Если у пользователя уже есть отзыв (одобренный или неодобренный), скрываем форму
+  if (hasReview) {
+    return null;
   }
 
   return (

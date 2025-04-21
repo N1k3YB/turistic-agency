@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { UserRole } from '@prisma/client';
 import UserModal from '@/components/admin/UserModal';
+import ErrorNotification from '@/components/admin/ErrorNotification';
 
 // Интерфейс для пользователя
 interface User {
@@ -60,6 +61,7 @@ export default function AdminUsersPage() {
     name?: string;
     email?: string;
     role?: UserRole;
+    error?: string;
   } | null>(null);
   
   // Загрузка данных
@@ -162,6 +164,8 @@ export default function AdminUsersPage() {
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error('Ошибка от сервера:', errorData);
+        // Передаем ошибку в модальное окно
         throw new Error(errorData.error || 'Ошибка при сохранении пользователя');
       }
       
@@ -169,7 +173,9 @@ export default function AdminUsersPage() {
       setShowUserModal(false);
       fetchUsers();
     } catch (err: any) {
-      setError(err.message || 'Произошла ошибка при сохранении данных');
+      // Обновляем состояние выбранного пользователя, добавляя туда ошибку
+      setSelectedUser(prev => ({ ...prev, error: err.message }));
+      // Не закрываем модальное окно при ошибке
     }
   };
   
@@ -202,6 +208,9 @@ export default function AdminUsersPage() {
     }
   };
   
+  // Проверка на наличие ошибок
+  const hasErrors = error !== null;
+  
   if (status === 'loading') {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
@@ -228,18 +237,15 @@ export default function AdminUsersPage() {
   
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 min-h-screen">
+      {/* Глобальное уведомление об ошибке */}
+      <ErrorNotification error={error} onDismiss={() => setError(null)} />
+      
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-gray-800">Управление пользователями</h1>
         <Link href="/admin" className="text-blue-600 hover:text-blue-800">
           Назад к панели администратора
         </Link>
       </div>
-      
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6">
-          {error}
-        </div>
-      )}
       
       {/* Панель фильтров и поиска */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
@@ -275,7 +281,12 @@ export default function AdminUsersPage() {
           <div>
             <button
               onClick={handleCreateUser}
-              className="w-full md:w-auto flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer"
+              disabled={hasErrors || loading}
+              className={`w-full md:w-auto flex items-center justify-center px-4 py-2 rounded-lg
+                ${hasErrors || loading
+                  ? "bg-gray-400 cursor-not-allowed text-white"
+                  : "bg-green-600 text-white hover:bg-green-700 transition-colors cursor-pointer"
+                }`}
             >
               <PlusCircleIcon className="h-5 w-5 mr-1" />
               Добавить пользователя

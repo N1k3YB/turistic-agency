@@ -65,19 +65,19 @@ export default function DestinationDetailPage() {
   }, [slug]);
 
   if (loading) {
-    return <div className="container mx-auto px-4 py-8 text-center">Загрузка...</div>;
+    return <div className="container mx-auto px-4 py-8 min-h-screen text-center">Загрузка...</div>;
   }
 
   if (error) {
-    return <div className="container mx-auto px-4 py-8 text-center text-red-600">Ошибка: {error}</div>;
+    return <div className="container mx-auto px-4 py-8 min-h-screen text-center text-red-600">Ошибка: {error}</div>;
   }
 
   if (!destination) {
-    return <div className="container mx-auto px-4 py-8 text-center">Направление не найдено.</div>;
+    return <div className="container mx-auto px-4 py-8 min-h-screen text-center">Направление не найдено.</div>;
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 min-h-screen">
       {/* Изображение и название направления */}
       <div className="relative h-64 md:h-80 rounded-lg overflow-hidden mb-8">
         <Image
