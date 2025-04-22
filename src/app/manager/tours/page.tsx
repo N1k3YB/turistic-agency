@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
   PlusIcon, 
@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import ImageWithFallback from '@/components/ImageWithFallback';
 import toast from 'react-hot-toast';
+import { SearchParamsWrapper, useSearchParamsWithSuspense } from '@/hooks/useSearchParamsWithSuspense';
 
 
 interface Tour {
@@ -43,10 +44,20 @@ interface Tour {
   };
 }
 
+// Основной компонент, экспортируемый как страница
 export default function ManagerToursPage() {
+  return (
+    <SearchParamsWrapper>
+      <ManagerToursContent />
+    </SearchParamsWrapper>
+  );
+}
+
+// Компонент содержимого, который использует useSearchParams
+function ManagerToursContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParamsWithSuspense();
   
   const [tours, setTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);

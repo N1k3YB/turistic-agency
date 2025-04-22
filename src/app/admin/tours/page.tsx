@@ -2,7 +2,7 @@
 
 import React, { Fragment, useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
   PlusIcon, 
@@ -15,6 +15,7 @@ import {
 } from '@heroicons/react/24/outline';
 import ImageWithFallback from '@/components/ImageWithFallback';
 import toast from 'react-hot-toast';
+import { SearchParamsWrapper, useSearchParamsWithSuspense } from '@/hooks/useSearchParamsWithSuspense';
 
 // Интерфейс для тура
 interface Tour {
@@ -50,10 +51,20 @@ interface ToursResponse {
   };
 }
 
+// Основной компонент страницы
 export default function AdminToursPage() {
+  return (
+    <SearchParamsWrapper>
+      <AdminToursContent />
+    </SearchParamsWrapper>
+  );
+}
+
+// Компонент с основной логикой
+function AdminToursContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParamsWithSuspense();
   
   // Состояния для данных и управления
   const [tours, setTours] = useState<Tour[]>([]);

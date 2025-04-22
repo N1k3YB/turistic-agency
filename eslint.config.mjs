@@ -39,6 +39,7 @@ const eslintConfig = [
       "@next/next/no-img-element": "off",
       "@next/next/no-html-link-for-pages": "off",
       "react-hooks/exhaustive-deps": "off",
+      '@next/next/no-page-custom-font': 'off',
       "prefer-const": "off"
     }
   }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { 
@@ -19,6 +19,7 @@ import {
   EnvelopeIcon,
   PhoneIcon
 } from "@heroicons/react/24/outline";
+import { SearchParamsWrapper, useSearchParamsWithSuspense } from "@/hooks/useSearchParamsWithSuspense";
 
 // Определение типов
 interface TicketResponse {
@@ -49,10 +50,20 @@ interface Ticket {
   responses: TicketResponse[];
 }
 
+// Основной компонент страницы
 export default function ManagerTicketsPage() {
+  return (
+    <SearchParamsWrapper>
+      <ManagerTicketsContent />
+    </SearchParamsWrapper>
+  );
+}
+
+// Компонент с основной логикой
+function ManagerTicketsContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParamsWithSuspense();
 
   // Состояния
   const [tickets, setTickets] = useState<Ticket[]>([]);
