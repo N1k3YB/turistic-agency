@@ -74,7 +74,7 @@ export async function PUT(
     );
   }
   
-  const id = parseInt(await params.id);
+  const id = parseInt(await params?.id);
   
   if (isNaN(id) || id <= 0) {
     return NextResponse.json(
