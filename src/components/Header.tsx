@@ -66,10 +66,6 @@ const Header: React.FC = () => {
                 
                 {isUserMenuOpen && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 ring-1 ring-black ring-opacity-5">
-                    <div className="px-4 py-2 text-xs text-gray-500 border-b">
-                      Роль: {session.user.role === 'ADMIN' ? 'Администратор' : 
-                            session.user.role === 'MANAGER' ? 'Менеджер' : 'Пользователь'}
-                    </div>
                     <Link 
                       href="/profile" 
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

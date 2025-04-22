@@ -1,4 +1,0 @@
--- AlterTable
-ALTER TABLE "Tour" ADD COLUMN     "duration" INTEGER NOT NULL DEFAULT 7,
-ADD COLUMN     "groupSize" INTEGER NOT NULL DEFAULT 10,
-ADD COLUMN     "nextTourDate" TIMESTAMP(3);

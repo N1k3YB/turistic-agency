@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import TourCard from '../../../../components/TourCard';
+import TourCard from '../../../components/TourCard';
 
 // Тип для тура (из TourCard, но с добавлением slug)
 interface TourSummary {
@@ -111,14 +111,6 @@ export default function DestinationDetailPage() {
     }
   };
 
-  // Функция для выбора случайного тура
-  const selectRandomTour = () => {
-    if (displayedTours.length > 0) {
-      const randomIndex = Math.floor(Math.random() * displayedTours.length);
-      const randomTour = displayedTours[randomIndex];
-      window.location.href = `/tours/${randomTour.slug}`;
-    }
-  };
 
   if (loading) {
     return <div className="container mx-auto px-4 py-8 min-h-screen text-center">Загрузка...</div>;
@@ -146,11 +138,6 @@ export default function DestinationDetailPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
         <div className="absolute bottom-0 left-0 p-6 md:p-8">
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-2">{destination.name}</h1>
-          <button 
-            onClick={selectRandomTour} 
-            className="bg-white text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-full text-sm font-medium transition-colors shadow-lg">
-            Подобрать тур
-          </button>
         </div>
       </div>
 

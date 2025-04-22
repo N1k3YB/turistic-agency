@@ -13,8 +13,8 @@ const updateUserSchema = z.object({
   role: z.enum(['USER', 'MANAGER', 'ADMIN'], { 
     errorMap: () => ({ message: "Выберите одну из доступных ролей: USER, MANAGER, ADMIN" })
   }),
-  phone: z.string().optional(),
-  address: z.string().optional(),
+  phone: z.string().nullable().optional(),
+  address: z.string().nullable().optional(),
 });
 
 // PUT запрос для обновления пользователя
@@ -126,8 +126,8 @@ export async function PUT(
       name,
       email,
       role,
-      phone,
-      address
+      phone: phone === '' ? null : phone,
+      address: address === '' ? null : address
     };
     
     // Обновляем пароль только если он предоставлен
@@ -135,11 +135,15 @@ export async function PUT(
       updateData.hashedPassword = await hash(password, 10);
     }
     
+    console.log('Данные для обновления пользователя:', updateData);
+    
     // Обновление пользователя
     const updatedUser = await prisma.user.update({
       where: { id },
       data: updateData
     });
+    
+    console.log('Обновленный пользователь:', updatedUser);
     
     return NextResponse.json({
       message: 'Пользователь успешно обновлен',
@@ -147,7 +151,9 @@ export async function PUT(
         id: updatedUser.id,
         name: updatedUser.name,
         email: updatedUser.email,
-        role: updatedUser.role
+        role: updatedUser.role,
+        phone: updatedUser.phone,
+        address: updatedUser.address
       }
     });
   } catch (error) {
@@ -210,25 +216,20 @@ export async function DELETE(
       );
     }
     
-    // Удаляем сначала все зависимые записи
-    // 1. Удаляем все отзывы пользователя
     await prisma.review.deleteMany({
       where: { userId: id }
     });
     
-    // 2. Удаляем сессии пользователя
-    await prisma.session.deleteMany({
-      where: { userId: id }
-    });
-    
-    // 3. Удаляем аккаунты пользователя (OAuth)
-    await prisma.account.deleteMany({
-      where: { userId: id }
-    });
-    
-    // 4. Удаляем самого пользователя
     await prisma.user.delete({
       where: { id }
+    });
+
+    await prisma.order.deleteMany({
+      where: { userId: id }
+    });
+
+    await prisma.favorite.deleteMany({
+      where: { userId: id }
     });
     
     return NextResponse.json(

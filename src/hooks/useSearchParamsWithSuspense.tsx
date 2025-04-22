@@ -40,23 +40,3 @@ export function useSearchParamsWithSuspense() {
   
   return searchParams;
 }
-
-// Пример использования:
-/*
-import { SearchParamsWrapper, useSearchParamsWithSuspense } from '@/hooks/useSearchParamsWithSuspense';
-
-function MyComponent() {
-  // Используем searchParams внутри компонента
-  const searchParams = useSearchParamsWithSuspense();
-  // ...
-}
-
-// В родительском компоненте или на странице
-export default function Page() {
-  return (
-    <SearchParamsWrapper>
-      <MyComponent />
-    </SearchParamsWrapper>
-  );
-}
-*/ 

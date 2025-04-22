@@ -18,6 +18,7 @@ import {
 type UserRole = 'ADMIN' | 'USER' | 'MANAGER';
 import UserModal from '@/components/admin/UserModal';
 import ErrorNotification from '@/components/admin/ErrorNotification';
+import { toast } from 'react-hot-toast';
 
 // Интерфейс для пользователя
 interface User {
@@ -78,15 +79,25 @@ export default function AdminUsersPage() {
   
   // Загрузка данных (мемоизированная)
   const fetchUsers = useCallback(async (forceRefresh = false) => {
-    // Проверяем, нужно ли выполнять повторный запрос
-    const paramsChanged = 
-      prevFetchParamsRef.current.page !== page ||
-      prevFetchParamsRef.current.search !== search ||
-      prevFetchParamsRef.current.selectedRole !== selectedRole;
-      
-    if (!forceRefresh && !paramsChanged && users.length > 0) {
-      setLoading(false);
-      return;
+    // Всегда выполняем запрос при forceRefresh=true
+    if (forceRefresh) {
+      setLoading(true);
+      prevFetchParamsRef.current = {
+        page: 0, // Сброс кэша
+        search: '',
+        selectedRole: ''
+      };
+    } else {
+      // Проверяем, нужно ли выполнять повторный запрос
+      const paramsChanged = 
+        prevFetchParamsRef.current.page !== page ||
+        prevFetchParamsRef.current.search !== search ||
+        prevFetchParamsRef.current.selectedRole !== selectedRole;
+        
+      if (!paramsChanged && users.length > 0) {
+        setLoading(false);
+        return;
+      }
     }
     
     setLoading(true);
@@ -98,13 +109,23 @@ export default function AdminUsersPage() {
       if (search) url += `&search=${encodeURIComponent(search)}`;
       if (selectedRole) url += `&role=${selectedRole}`;
       
-      const response = await fetch(url);
+      console.log('Запрос на получение пользователей:', url);
+      
+      const response = await fetch(url, {
+        // Добавляем cache: 'no-store' для предотвращения кэширования браузером
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       
       if (!response.ok) {
         throw new Error('Ошибка при загрузке пользователей');
       }
       
       const data: UsersResponse = await response.json();
+      console.log('Получены данные пользователей:', data.users.length);
+      
       setUsers(data.users);
       setTotalPages(data.pagination.totalPages);
       setTotalUsers(data.pagination.totalUsers);
@@ -116,6 +137,7 @@ export default function AdminUsersPage() {
         selectedRole
       };
     } catch (err: any) {
+      console.error('Ошибка при загрузке пользователей:', err);
       setError(err.message || 'Произошла ошибка при загрузке данных');
     } finally {
       setLoading(false);
@@ -189,6 +211,9 @@ export default function AdminUsersPage() {
   const handleSaveUser = async (userData: any) => {
     try {
       setError(null);
+      setLoading(true); // Устанавливаем флаг загрузки
+      
+      console.log('Отправка данных для сохранения пользователя:', userData);
       
       // Определяем URL и метод в зависимости от типа операции
       const url = userData.id 
@@ -201,24 +226,36 @@ export default function AdminUsersPage() {
         method,
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
         },
         body: JSON.stringify(userData),
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Ошибка от сервера:', errorData);
+        console.error('Ошибка от сервера:', data);
         // Передаем ошибку в модальное окно
-        throw new Error(errorData.error || 'Ошибка при сохранении пользователя');
+        throw new Error(data.error || 'Ошибка при сохранении пользователя');
       }
       
-      // Закрываем модальное окно и обновляем список
+      console.log('Успешный ответ от сервера:', data);
+      
+      // Закрываем модальное окно
       setShowUserModal(false);
-      fetchUsers();
+      
+      // Принудительно обновляем список пользователей с сервера
+      await fetchUsers(true); // Передаем true для принудительного обновления
+      
+      // Показываем сообщение об успехе
+      toast.success(userData.id ? 'Пользователь успешно обновлен' : 'Пользователь успешно создан');
     } catch (err: any) {
       // Обновляем состояние выбранного пользователя, добавляя туда ошибку
       setSelectedUser(prev => ({ ...prev, error: err.message }));
       // Не закрываем модальное окно при ошибке
+      toast.error(err.message || 'Произошла ошибка при сохранении пользователя');
+    } finally {
+      setLoading(false); // Сбрасываем флаг загрузки независимо от результата
     }
   };
   
@@ -232,22 +269,41 @@ export default function AdminUsersPage() {
     
     try {
       setError(null);
+      setLoading(true);
+      
+      console.log('Удаление пользователя с ID:', userToDelete);
       
       const response = await fetch(`/api/admin/users/${userToDelete}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
       });
       
+      const data = await response.json();
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Ошибка при удалении пользователя');
+        console.error('Ошибка при удалении:', data);
+        throw new Error(data.error || 'Ошибка при удалении пользователя');
       }
+      
+      console.log('Пользователь успешно удален:', data);
       
       // Закрываем модальное окно и обновляем список
       setShowDeleteModal(false);
       setUserToDelete(null);
-      fetchUsers();
+      
+      // Принудительно обновляем список пользователей
+      await fetchUsers(true);
+      
+      // Показываем уведомление
+      toast.success('Пользователь успешно удален');
     } catch (err: any) {
+      console.error('Ошибка:', err);
       setError(err.message || 'Произошла ошибка при удалении пользователя');
+      toast.error(err.message || 'Произошла ошибка при удалении пользователя');
+    } finally {
+      setLoading(false);
     }
   };
   

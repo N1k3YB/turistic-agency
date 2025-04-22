@@ -40,7 +40,7 @@ interface Tour {
   imageUrls: string[];
   duration: number;
   groupSize: number;
-  availableSeats: number; // Добавлено количество свободных мест
+  availableSeats: number;
   nextTourDate: string | null;
   createdAt: string;
   updatedAt: string;
@@ -725,7 +725,14 @@ export default function TourDetailPage() {
                         min={1} 
                         max={tour.availableSeats}
                         value={quantity} 
-                        onChange={(e) => setQuantity(parseInt(e.target.value))}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (value > tour.availableSeats) {
+                            setQuantity(tour.availableSeats);
+                          } else {
+                            setQuantity(value);
+                          }
+                        }}
                         className="w-full border border-gray-300 rounded-lg p-2"
                         required
                       />
@@ -765,7 +772,7 @@ export default function TourDetailPage() {
                     
                     <div className="flex items-center justify-between font-medium text-lg pt-2 border-t border-gray-200">
                       <span>Итого:</span>
-                      <span className="text-blue-600">{(parseFloat(tour.price) * quantity).toFixed(2)} {tour.currency}</span>
+                      <span className="text-blue-600">{isNaN(parseFloat(tour.price) * quantity) ? '0' : Math.floor(parseFloat(tour.price) * quantity)} {tour.currency}</span>
                     </div>
                     
                     <div className="flex space-x-3">
@@ -809,16 +816,7 @@ export default function TourDetailPage() {
             </aside>
           </div>
           
-          {/* Секция похожих туров */}
-          <div className="mt-12 pt-8 border-t border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Похожие туры</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Здесь могут быть компоненты TourCard для похожих туров */}
-              <div className="bg-white rounded-lg shadow-md p-3 text-center flex items-center justify-center h-48">
-                <p className="text-gray-500">Скоро здесь появятся похожие туры</p>
-              </div>
-            </div>
-          </div>
+        
         </div>
       </div>
 

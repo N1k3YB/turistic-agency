@@ -4,7 +4,6 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { EnvelopeIcon, LockClosedIcon, UserIcon, EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import ReCAPTCHA from "react-google-recaptcha";
 
 
 export default function SignUp() {
@@ -13,25 +12,14 @@ export default function SignUp() {
   const [password, setPassword] = useState("");
   const [passwordRepeat, setPasswordRepeat] = useState("");
   const [error, setError] = useState("");
-  const [captchaError, setCaptchaError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordRepeat, setShowPasswordRepeat] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const router = useRouter();
-  const recaptchaRef = useRef<ReCAPTCHA>(null);
-
-  const RECAPTCHA_SITE_KEY = "6LeLvyArAAAAAKUz2d9d7j_bCQ4qJiCVToFNIBv6";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setCaptchaError("");
-
-    if (!captchaToken) {
-      setCaptchaError("Пожалуйста, подтвердите, что вы не робот");
-      return;
-    }
 
     if (password !== passwordRepeat) {
       setError("Пароли не совпадают");
@@ -46,7 +34,7 @@ export default function SignUp() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ name, email, password, captcha: captchaToken }),
+        body: JSON.stringify({ name, email, password}),
       });
 
       const data = await response.json();
@@ -65,10 +53,7 @@ export default function SignUp() {
       }
     } finally {
       setLoading(false);
-      if (recaptchaRef.current) {
-        recaptchaRef.current.reset();
-      }
-      setCaptchaToken(null);
+
     }
   };
 
@@ -202,23 +187,6 @@ export default function SignUp() {
             </div>
           </div>
 
-          <div>
-            <ReCAPTCHA
-              ref={recaptchaRef}
-              sitekey={RECAPTCHA_SITE_KEY}
-              onChange={(token: string | null) => {
-                setCaptchaToken(token);
-                setCaptchaError("");
-              }}
-              onExpired={() => setCaptchaToken(null)}
-              hl="ru"
-            />
-            {captchaError && (
-              <div className="text-sm text-center bg-red-50 text-red-500 p-2 rounded mt-2">
-                {captchaError}
-              </div>
-            )}
-          </div>
 
           {error && (
             <div className="text-sm text-center bg-red-50 text-red-500 p-2 rounded">

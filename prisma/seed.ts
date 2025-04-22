@@ -19,8 +19,6 @@ async function main() {
   await prisma.destination.deleteMany({});
   
   // Удаляем пользователей и связанные с ними данные
-  await prisma.session.deleteMany({});
-  await prisma.account.deleteMany({});
   await prisma.user.deleteMany({});
   
   console.log('Старые данные удалены.');

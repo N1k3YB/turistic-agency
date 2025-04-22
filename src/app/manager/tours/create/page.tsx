@@ -147,6 +147,11 @@ export default function CreateTourPage() {
     return Object.keys(newErrors).length === 0;
   };
   
+  // Обновление доступных мест при изменении размера группы
+  useEffect(() => {
+    setAvailableSeats(groupSize);
+  }, [groupSize]);
+  
   // Отправка формы
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -356,7 +361,9 @@ export default function CreateTourPage() {
                   onChange={(e) => setAvailableSeats(e.target.value)}
                   className={`w-full px-3 py-2 border rounded-md ${errors.availableSeats ? 'border-red-500' : 'border-gray-300'}`}
                   min="1"
+                  readOnly
                 />
+                <p className="mt-1 text-xs text-gray-500">Автоматически устанавливается равным размеру группы</p>
                 {errors.availableSeats && <p className="mt-1 text-sm text-red-600">{errors.availableSeats}</p>}
               </div>
               

@@ -188,6 +188,11 @@ export default function EditTourPage() {
     }
   }, [session?.user?.email, tourId]);
   
+  // Обновление доступных мест при изменении размера группы
+  useEffect(() => {
+    setAvailableSeats(groupSize);
+  }, [groupSize]);
+  
   // Генерация slug из названия
   const generateSlug = useCallback(() => {
     const generatedSlug = title
@@ -471,7 +476,9 @@ export default function EditTourPage() {
                   onChange={(e) => setAvailableSeats(e.target.value)}
                   className={`w-full px-3 py-2 border rounded-md ${errors.availableSeats ? 'border-red-500' : 'border-gray-300'}`}
                   min="1"
+                  readOnly
                 />
+                <p className="mt-1 text-xs text-gray-500">Автоматически устанавливается равным размеру группы</p>
                 {errors.availableSeats && <p className="mt-1 text-sm text-red-600">{errors.availableSeats}</p>}
               </div>
               

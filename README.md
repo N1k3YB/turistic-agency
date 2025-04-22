@@ -100,8 +100,6 @@ graph TD
 
 ```mermaid
 erDiagram
-    User ||--o{ Account : has
-    User ||--o{ Session : has
     User ||--o{ Review : writes
     User ||--o{ Favorite : has
     User ||--o{ Order : makes

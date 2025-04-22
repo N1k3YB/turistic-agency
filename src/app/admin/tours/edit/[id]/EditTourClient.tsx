@@ -444,8 +444,6 @@ export function EditTourClient({ tourId }: { tourId: string }) {
                   className={`w-full px-3 py-2 border rounded-md ${errors.currency ? 'border-red-500' : 'border-gray-300'}`}
                 >
                   <option value="RUB">₽ (RUB)</option>
-                  <option value="USD">$ (USD)</option>
-                  <option value="EUR">€ (EUR)</option>
                 </select>
                 {errors.currency && <p className="mt-1 text-sm text-red-600">{errors.currency}</p>}
               </div>

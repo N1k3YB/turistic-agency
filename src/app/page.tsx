@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from "next/link";
-import TourCard from '../../components/TourCard'; // Исправленный путь
+import TourCard from '@/components/TourCard'; // Исправленный путь
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 // Определение типа для тура (согласовано с API и TourCard)
@@ -111,7 +111,7 @@ export default function Home() {
     if (tours.length > 0) {
       const randomIndex = Math.floor(Math.random() * tours.length);
       const randomTour = tours[randomIndex];
-      window.location.href = `/tours/${randomTour.slug}`;
+      window.location.href = `/destinations`;
     }
   }, [tours]);
 
@@ -138,10 +138,21 @@ export default function Home() {
 
   // Загрузка туров при изменении фильтров или при первом рендере
   useEffect(() => {
-    fetchTours(0); // Сбрасываем смещение на 0 при изменении фильтров
-    fetchPopularTours(); // Загружаем популярные туры
-  }, [fetchTours, fetchPopularTours, searchTerm, selectedDestination]); // Зависимости
+    const debounceTimer = setTimeout(() => {
+      fetchTours(0); // Сбрасываем смещение на 0 при изменении фильтров
+    }, 500); // Задержка в 500 мс перед отправкой запроса
+    
+    return () => clearTimeout(debounceTimer); // Очистка таймера при изменении зависимостей
+  }, [fetchTours, searchTerm, selectedDestination]); // Зависимости
 
+  useEffect(() => {
+    fetchTours(0);
+    fetchPopularTours();
+  }, []);
+
+
+
+  
   // Обработчик для формы поиска (может быть пустым, т.к. используем onChange и useEffect)
   const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -169,32 +180,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Популярные туры */}
-      <section className="w-full max-w-7xl px-4 md:px-8 py-12">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">Популярные туры</h2>
-          <p className="text-gray-600">Самые востребованные направления среди наших клиентов</p>
-        </div>
-        
-        {loadingPopular ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-            {popularTours.length > 0 ? (
-              popularTours.map((tour) => (
-                <div key={tour.id} className="h-full">
-                  <TourCard tour={tour} />
-                </div>
-              ))
-            ) : (
-              <p className="col-span-3 text-center text-gray-600">Популярные туры не найдены</p>
-            )}
-          </div>
-        )}
-      </section>
-
       {/* Форма поиска */}
       <div className="w-full max-w-7xl px-4 md:px-8 py-8">
         <div className="mb-12">
@@ -210,7 +195,7 @@ export default function Home() {
             <div className="relative flex-grow w-full md:w-auto">
               <input
                 type="text"
-                placeholder="Название тура или направления..."
+                placeholder="Введите название тура"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
@@ -238,6 +223,8 @@ export default function Home() {
             </div>
           </form>
         </div>
+
+        
 
         <div className="w-full">
           {loading && offset === 0 && (
@@ -296,6 +283,32 @@ export default function Home() {
           )}
         </div>
       </div>
+
+            {/* Популярные туры */}
+            <section className="w-full max-w-7xl px-4 md:px-8 py-12">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">Популярные туры</h2>
+          <p className="text-gray-600">Самые востребованные направления среди наших клиентов</p>
+        </div>
+        
+        {loadingPopular ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+            {popularTours.length > 0 ? (
+              popularTours.map((tour) => (
+                <div key={tour.id} className="h-full">
+                  <TourCard tour={tour} />
+                </div>
+              ))
+            ) : (
+              <p className="col-span-3 text-center text-gray-600">Популярные туры не найдены</p>
+            )}
+          </div>
+        )}
+      </section>
 
       {/* Секция с преимуществами */}
       <section className="w-full bg-gray-50 py-16">

@@ -827,16 +827,7 @@ export default function ProfilePage() {
                 </div>
                 <p className="text-gray-600 text-xs mb-3 line-clamp-2">{lastTicket.message}</p>
                 <div className="flex justify-between items-center text-xs text-gray-500">
-                  <span>ID: {lastTicket.id}</span>
                   <span>Создан: {formatDate(lastTicket.createdAt)}</span>
-                </div>
-                <div className="mt-3 text-center">
-                  <Link 
-                    href={`/profile/tickets/${lastTicket.id}`} 
-                    className="text-blue-600 hover:text-blue-800 text-sm inline-block"
-                  >
-                    Перейти к обращению
-                  </Link>
                 </div>
               </div>
             ) : (

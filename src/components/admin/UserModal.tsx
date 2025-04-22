@@ -209,6 +209,10 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
       return;
     }
     
+    // Подготавливаем данные перед отправкой
+    const phoneValue = phone.trim() || undefined;
+    const addressValue = address.trim() || undefined;
+    
     // Если ошибок нет, отправляем данные
     const userData = {
       ...(user?.id && { id: user.id }),
@@ -216,10 +220,11 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
       email: email.trim(),
       role,
       ...(password && { password: password.trim() }),
-      phone: phone.trim(),
-      address: address.trim()
+      phone: phoneValue,
+      address: addressValue
     };
     
+    console.log('Отправляем данные пользователя:', userData);
     onSave(userData);
   };
   
