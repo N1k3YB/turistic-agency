@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -40,7 +40,7 @@ export default function EditTourPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
-  const tourId = params.id as string;
+  const tourId = params?.id as string;
   
   // Состояния для формы
   const [title, setTitle] = useState('');
@@ -67,28 +67,17 @@ export default function EditTourPage() {
   const [tourLoading, setTourLoading] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
-  // Проверка аутентификации и роли пользователя
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin');
+  // Refs для отслеживания загрузки данных
+  const tourDataFetchedRef = useRef(false);
+  const destinationsLoadedRef = useRef(false);
+  
+  // Загрузка списка направлений
+  const fetchDestinations = useCallback(async () => {
+    // Проверяем, были ли данные уже загружены
+    if (destinationsLoadedRef.current) {
       return;
     }
     
-    if (status === 'authenticated') {
-      const userRole = session?.user?.role;
-      if (userRole !== 'MANAGER' && userRole !== 'ADMIN') {
-        router.push('/');
-        return;
-      }
-      
-      // Загружаем список направлений и данные тура
-      fetchDestinations();
-      fetchTourData();
-    }
-  }, [status, session, router, tourId]);
-  
-  // Загрузка списка направлений
-  const fetchDestinations = async () => {
     try {
       const response = await fetch('/api/admin/destinations');
       if (!response.ok) {
@@ -104,14 +93,23 @@ export default function EditTourPage() {
       } else {
         console.error('Неожиданный формат данных:', data);
       }
+      
+      // Отмечаем, что данные были загружены
+      destinationsLoadedRef.current = true;
     } catch (error) {
       console.error('Ошибка при загрузке направлений:', error);
       toast.error('Не удалось загрузить список направлений');
     }
-  };
+  }, []);
   
   // Загрузка данных тура
-  const fetchTourData = async () => {
+  const fetchTourData = useCallback(async () => {
+    // Проверяем, были ли данные уже загружены
+    if (tourDataFetchedRef.current) {
+      setTourLoading(false);
+      return;
+    }
+    
     try {
       setTourLoading(true);
       const response = await fetch(`/api/manager/tours/${tourId}`);
@@ -150,6 +148,9 @@ export default function EditTourPage() {
       } else {
         toast.error('Структура данных тура не соответствует ожидаемой');
       }
+      
+      // Отмечаем, что данные были загружены
+      tourDataFetchedRef.current = true;
     } catch (error) {
       console.error('Ошибка при загрузке данных тура:', error);
       toast.error('Не удалось загрузить данные тура');
@@ -157,10 +158,38 @@ export default function EditTourPage() {
     } finally {
       setTourLoading(false);
     }
-  };
+  }, [tourId, router]);
+  
+  // Проверка аутентификации и роли пользователя
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin');
+      return;
+    }
+    
+    if (status === 'authenticated') {
+      const userRole = session?.user?.role;
+      if (userRole !== 'MANAGER' && userRole !== 'ADMIN') {
+        router.push('/');
+        return;
+      }
+      
+      // Загружаем список направлений и данные тура
+      fetchDestinations();
+      fetchTourData();
+    }
+  }, [status, session, router, fetchDestinations, fetchTourData]);
+  
+  // Сбрасываем флаги загрузки данных при смене пользователя или ID тура
+  useEffect(() => {
+    if (session?.user?.email || tourId) {
+      tourDataFetchedRef.current = false;
+      destinationsLoadedRef.current = false;
+    }
+  }, [session?.user?.email, tourId]);
   
   // Генерация slug из названия
-  const generateSlug = () => {
+  const generateSlug = useCallback(() => {
     const generatedSlug = title
       .toLowerCase()
       .replace(/[^\w\sа-яё-]/g, '')
@@ -177,10 +206,10 @@ export default function EditTourPage() {
       });
     
     setSlug(generatedSlug);
-  };
+  }, [title]);
   
   // Добавление URL изображения
-  const addImageUrl = () => {
+  const addImageUrl = useCallback(() => {
     if (tempImageUrl && tempImageUrl.trim() !== '') {
       if (imageUrls.includes(tempImageUrl)) {
         toast.error('Это изображение уже добавлено');
@@ -190,15 +219,15 @@ export default function EditTourPage() {
       setImageUrls([...imageUrls, tempImageUrl]);
       setTempImageUrl('');
     }
-  };
+  }, [tempImageUrl, imageUrls]);
   
   // Удаление URL изображения
-  const removeImageUrl = (urlToRemove: string) => {
+  const removeImageUrl = useCallback((urlToRemove: string) => {
     setImageUrls(imageUrls.filter(url => url !== urlToRemove));
-  };
+  }, [imageUrls]);
   
   // Валидация формы
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
     
     if (!title.trim()) newErrors.title = 'Название тура обязательно';
@@ -218,10 +247,10 @@ export default function EditTourPage() {
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [title, slug, price, currency, imageUrl, shortDescription, fullDescription, destinationId, duration, groupSize, availableSeats, nextTourDate]);
   
   // Отправка формы
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -272,7 +301,11 @@ export default function EditTourPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    title, slug, price, currency, imageUrl, shortDescription, fullDescription,
+    inclusions, exclusions, itinerary, imageUrls, destinationId, duration, 
+    groupSize, availableSeats, nextTourDate, tourId, router, validateForm
+  ]);
   
   if (tourLoading) {
     return (

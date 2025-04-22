@@ -366,7 +366,7 @@ export default function UserModal({ isOpen, onClose, user, onSave }: UserModalPr
 
                   <div className="mb-4">
                     <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                      Адрес
+                      Город
                     </label>
                     <input
                       type="text"

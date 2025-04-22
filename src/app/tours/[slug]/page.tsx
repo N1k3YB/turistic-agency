@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ImageWithFallback from '@/components/ImageWithFallback';
@@ -83,92 +83,112 @@ export default function TourDetailPage() {
   const [contactSubject, setContactSubject] = useState('');
   const [contactMessage, setContactMessage] = useState('');
   const [submittingTicket, setSubmittingTicket] = useState(false);
+  
+  // Ref для отслеживания загрузки данных
+  const tourDataFetchedRef = useRef(false);
+  const userDataFetchedRef = useRef(false);
+  const favoriteCheckedRef = useRef(false);
 
   // Получаем данные о туре и его отзывы
+  const fetchTour = useCallback(async () => {
+    // Проверяем, были ли данные уже загружены
+    if (tourDataFetchedRef.current && tour) {
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/tours/${slug}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Тур с таким адресом не найден.');
+        }
+        throw new Error('Не удалось загрузить данные тура');
+      }
+      const data = await response.json();
+      setTour(data);
+      
+      // Получаем отзывы для расчета рейтинга
+      const reviewsResponse = await fetch(`/api/reviews?tourId=${data.id}`);
+      if (reviewsResponse.ok) {
+        const reviewsData = await reviewsResponse.json();
+        setReviews(reviewsData);
+        
+        // Рассчитываем средний рейтинг
+        if (reviewsData.length > 0) {
+          const totalRating = reviewsData.reduce((sum: number, review: any) => sum + review.rating, 0);
+          const averageRating = (totalRating / reviewsData.length).toFixed(1);
+          setTour(prev => prev ? {...prev, averageRating: parseFloat(averageRating), reviewCount: reviewsData.length} : null);
+        }
+      }
+      
+      // Если пользователь авторизован, заполним email из профиля
+      if (session?.user?.email) {
+        setContactEmail(session.user.email);
+      }
+      
+      // Отмечаем, что данные были загружены
+      tourDataFetchedRef.current = true;
+    } catch (err: any) {
+      setError(err.message || 'Произошла ошибка при загрузке');
+    } finally {
+      setLoading(false);
+    }
+  }, [slug, session, tour]);
+
   useEffect(() => {
     if (!slug) return;
-
-    const fetchTour = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetch(`/api/tours/${slug}`);
-        if (!response.ok) {
-          if (response.status === 404) {
-            throw new Error('Тур с таким адресом не найден.');
-          }
-          throw new Error('Не удалось загрузить данные тура');
-        }
-        const data = await response.json();
-        setTour(data);
-        
-        // Получаем отзывы для расчета рейтинга
-        const reviewsResponse = await fetch(`/api/reviews?tourId=${data.id}`);
-        if (reviewsResponse.ok) {
-          const reviewsData = await reviewsResponse.json();
-          setReviews(reviewsData);
-          
-          // Рассчитываем средний рейтинг
-          if (reviewsData.length > 0) {
-            const totalRating = reviewsData.reduce((sum: number, review: any) => sum + review.rating, 0);
-            const averageRating = (totalRating / reviewsData.length).toFixed(1);
-            setTour(prev => prev ? {...prev, averageRating: parseFloat(averageRating), reviewCount: reviewsData.length} : null);
-          }
-        }
-        
-        // Если пользователь авторизован, заполним email из профиля
-        if (session?.user?.email) {
-          setContactEmail(session.user.email);
-        }
-      } catch (err: any) {
-        setError(err.message || 'Произошла ошибка при загрузке');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTour();
-  }, [slug, session]);
+  }, [slug, fetchTour]);
 
   // Проверяем, добавлен ли тур в избранное
+  const checkIfFavorite = useCallback(async () => {
+    if (!session?.user || !tour || favoriteCheckedRef.current) {
+      setCheckingFavorite(false);
+      return;
+    }
+    
+    try {
+      setCheckingFavorite(true);
+      const response = await fetch('/api/favorites');
+      if (response.ok) {
+        const favorites = await response.json();
+        const isFavorite = favorites.some((fav: any) => fav.tourId === tour.id);
+        setIsInFavorites(isFavorite);
+        favoriteCheckedRef.current = true;
+      }
+    } catch (error) {
+      console.error("Ошибка при проверке избранного:", error);
+    } finally {
+      setCheckingFavorite(false);
+    }
+  }, [session, tour]);
+
   useEffect(() => {
     if (!session?.user || !tour) {
       setCheckingFavorite(false);
       return;
     }
-
-    const checkIfFavorite = async () => {
-      try {
-        setCheckingFavorite(true);
-        const response = await fetch('/api/favorites');
-        if (response.ok) {
-          const favorites = await response.json();
-          const isFavorite = favorites.some((fav: any) => fav.tourId === tour.id);
-          setIsInFavorites(isFavorite);
-        }
-      } catch (error) {
-        console.error("Ошибка при проверке избранного:", error);
-      } finally {
-        setCheckingFavorite(false);
-      }
-    };
-
+    
     checkIfFavorite();
-  }, [session, tour]);
+  }, [session, tour, checkIfFavorite]);
 
-  // Эффект для загрузки данных пользователя, если он авторизован
+  // Сбрасываем флаг проверки избранного при смене тура или пользователя
   useEffect(() => {
-    if (session?.user) {
-      // Устанавливаем email пользователя для формы заказа
-      setContactEmail(session.user.email || '');
-      
-      // Загружаем номер телефона пользователя, если он есть
-      fetchUserPhone();
+    if (tour?.id || session?.user?.email) {
+      favoriteCheckedRef.current = false;
     }
-  }, [session]);
-  
+  }, [tour?.id, session?.user?.email]);
+
   // Функция для загрузки телефона пользователя
-  const fetchUserPhone = async () => {
+  const fetchUserPhone = useCallback(async () => {
+    // Проверяем, были ли данные пользователя уже загружены
+    if (userDataFetchedRef.current) {
+      return;
+    }
+    
     try {
       const response = await fetch('/api/user/profile');
       
@@ -179,11 +199,32 @@ export default function TourDetailPage() {
         if (data.phone) {
           setContactPhone(data.phone);
         }
+        
+        // Отмечаем, что данные пользователя были загружены
+        userDataFetchedRef.current = true;
       }
     } catch (error) {
       console.error('Ошибка при загрузке данных пользователя:', error);
     }
-  };
+  }, []);
+
+  // Эффект для загрузки данных пользователя, если он авторизован
+  useEffect(() => {
+    if (session?.user) {
+      // Устанавливаем email пользователя для формы заказа
+      setContactEmail(session.user.email || '');
+      
+      // Загружаем номер телефона пользователя, если он есть
+      fetchUserPhone();
+    }
+  }, [session, fetchUserPhone]);
+
+  // Сбрасываем флаг загрузки данных пользователя при смене пользователя
+  useEffect(() => {
+    if (session?.user?.email) {
+      userDataFetchedRef.current = false;
+    }
+  }, [session?.user?.email]);
 
   // Функция для добавления/удаления из избранного
   const toggleFavorite = async () => {

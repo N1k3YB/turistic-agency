@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
@@ -33,50 +33,69 @@ export default function EditDestinationPage({ params }: { params: { id: string }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  
+  // Ref для отслеживания загрузки данных
+  const dataFetchedRef = useRef(false);
 
   // Загрузка данных направления
-  useEffect(() => {
-    const fetchDestination = async () => {
-      try {
-        setIsLoading(true);
-        setLoadError(null);
-        
-        const response = await fetch(`/api/manager/destinations/${id}`);
-        
-        if (!response.ok) {
-          if (response.status === 404) {
-            throw new Error('Направление не найдено');
-          } else {
-            throw new Error('Ошибка загрузки данных направления');
-          }
-        }
-        
-        const data = await response.json();
-        
-        if (data.destination) {
-          setOriginalData(data.destination);
-          setFormData({
-            name: data.destination.name,
-            slug: data.destination.slug,
-            description: data.destination.description,
-            imageUrl: data.destination.imageUrl
-          });
+  const fetchDestination = useCallback(async () => {
+    // Проверяем, были ли данные уже загружены
+    if (dataFetchedRef.current) {
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      
+      const response = await fetch(`/api/manager/destinations/${id}`);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Направление не найдено');
         } else {
-          throw new Error('Неверный формат данных с сервера');
+          throw new Error('Ошибка загрузки данных направления');
         }
-      } catch (error: any) {
-        console.error('Ошибка при загрузке направления:', error);
-        setLoadError(error.message || 'Произошла ошибка при загрузке данных');
-        toast.error(error.message || 'Произошла ошибка при загрузке данных');
-      } finally {
-        setIsLoading(false);
       }
-    };
-
-    fetchDestination();
+      
+      const data = await response.json();
+      
+      if (data.destination) {
+        setOriginalData(data.destination);
+        setFormData({
+          name: data.destination.name,
+          slug: data.destination.slug,
+          description: data.destination.description,
+          imageUrl: data.destination.imageUrl
+        });
+      } else {
+        throw new Error('Неверный формат данных с сервера');
+      }
+      
+      // Отмечаем, что данные были загружены
+      dataFetchedRef.current = true;
+    } catch (error: any) {
+      console.error('Ошибка при загрузке направления:', error);
+      setLoadError(error.message || 'Произошла ошибка при загрузке данных');
+      toast.error(error.message || 'Произошла ошибка при загрузке данных');
+    } finally {
+      setIsLoading(false);
+    }
   }, [id]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  useEffect(() => {
+    fetchDestination();
+  }, [fetchDestination]);
+  
+  // Сбрасываем флаг загрузки данных при изменении ID направления
+  useEffect(() => {
+    if (id) {
+      dataFetchedRef.current = false;
+    }
+  }, [id]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
 
@@ -88,9 +107,9 @@ export default function EditDestinationPage({ params }: { params: { id: string }
         return newErrors;
       });
     }
-  };
+  }, [errors]);
 
-  const generateSlug = () => {
+  const generateSlug = useCallback(() => {
     if (!formData.name) return;
 
     const slug = formData.name
@@ -101,9 +120,9 @@ export default function EditDestinationPage({ params }: { params: { id: string }
       .trim();                        // Убираем пробелы по краям
 
     setFormData(prev => ({ ...prev, slug }));
-  };
+  }, [formData.name]);
 
-  const validateForm = () => {
+  const validateForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name) {
@@ -130,9 +149,9 @@ export default function EditDestinationPage({ params }: { params: { id: string }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -163,7 +182,7 @@ export default function EditDestinationPage({ params }: { params: { id: string }
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [validateForm, id, formData, router]);
 
   if (isLoading) {
     return (

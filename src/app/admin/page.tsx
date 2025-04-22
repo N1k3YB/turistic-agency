@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { 
   UserIcon, 
@@ -33,6 +33,37 @@ export default function AdminDashboardPage() {
     cancelledOrders: 0,
     cancelledOrdersPercentage: "0"
   });
+  
+  // Ref для отслеживания загрузки данных
+  const dataFetchedRef = useRef(false);
+
+  // Функция для загрузки статистики (мемоизированная)
+  const fetchStatistics = useCallback(async () => {
+    // Проверяем, были ли данные уже загружены
+    if (dataFetchedRef.current) {
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/statistics');
+      
+      if (!response.ok) {
+        throw new Error('Ошибка при получении статистики');
+      }
+      
+      const data = await response.json();
+      setStatistics(data);
+      
+      // Отмечаем, что данные были загружены
+      dataFetchedRef.current = true;
+    } catch (error) {
+      console.error('Ошибка при загрузке статистики:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     // Проверяем, что пользователь авторизован и имеет роль ADMIN
@@ -44,26 +75,14 @@ export default function AdminDashboardPage() {
       // Загружаем статистику с сервера
       fetchStatistics();
     }
-  }, [session, status, router]);
+  }, [session, status, router, fetchStatistics]);
 
-  // Функция для загрузки статистики
-  const fetchStatistics = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/admin/statistics');
-      
-      if (!response.ok) {
-        throw new Error('Ошибка при получении статистики');
-      }
-      
-      const data = await response.json();
-      setStatistics(data);
-    } catch (error) {
-      console.error('Ошибка при загрузке статистики:', error);
-    } finally {
-      setLoading(false);
+  // Сбрасываем флаг загрузки данных при смене пользователя
+  useEffect(() => {
+    if (session?.user?.email) {
+      dataFetchedRef.current = false;
     }
-  };
+  }, [session?.user?.email]);
 
   if (status === "loading" || loading) {
     return (

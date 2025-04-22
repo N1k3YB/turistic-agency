@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -42,6 +42,38 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Флаг для отслеживания загрузки данных
+  const dataFetchedRef = useRef(false);
+
+  // Мемоизированная функция для загрузки заказов
+  const fetchOrders = useCallback(async () => {
+    // Если данные уже загружены, не делаем повторный запрос
+    if (dataFetchedRef.current) {
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const response = await fetch('/api/orders');
+      
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить заказы');
+      }
+      
+      const data = await response.json();
+      setOrders(data);
+      
+      // Отмечаем, что данные загружены
+      dataFetchedRef.current = true;
+    } catch (error) {
+      console.error("Ошибка при загрузке заказов:", error);
+      setError('Произошла ошибка при загрузке заказов');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     // Если пользователь не авторизован, перенаправляем на страницу входа
@@ -54,26 +86,14 @@ export default function OrdersPage() {
     if (status === 'authenticated') {
       fetchOrders();
     }
-  }, [status, router]);
+  }, [status, router, fetchOrders]);
 
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/orders');
-      
-      if (!response.ok) {
-        throw new Error('Не удалось загрузить заказы');
-      }
-      
-      const data = await response.json();
-      setOrders(data);
-    } catch (error) {
-      console.error("Ошибка при загрузке заказов:", error);
-      setError('Произошла ошибка при загрузке заказов');
-    } finally {
-      setLoading(false);
+  // Сбрасываем флаг загрузки при изменении пользователя
+  useEffect(() => {
+    if (session?.user?.email) {
+      dataFetchedRef.current = false;
     }
-  };
+  }, [session?.user?.email]);
 
   // Функция для определения статуса заказа
   const getStatusDetails = (status: string) => {

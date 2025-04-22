@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -72,6 +72,10 @@ export default function EditTourPage({ params }: { params: { id: string } }) {
   const [loadingData, setLoadingData] = useState(true);
   const [loadError, setLoadError] = useState('');
   
+  // Ref для отслеживания загрузки данных
+  const dataFetchedRef = useRef(false);
+  const destinationsLoadedRef = useRef(false);
+  
   // Проверка аутентификации и роли пользователя
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -91,10 +95,23 @@ export default function EditTourPage({ params }: { params: { id: string } }) {
       // Загружаем данные тура
       fetchTourData();
     }
-  }, [status, session, router, tourId]);
+  }, [status, session, router]);
+  
+  // Сбрасываем флаг загрузки данных при смене пользователя или идентификатора тура
+  useEffect(() => {
+    if (session?.user?.email || tourId) {
+      dataFetchedRef.current = false;
+      destinationsLoadedRef.current = false;
+    }
+  }, [session?.user?.email, tourId]);
   
   // Загрузка списка направлений
-  const fetchDestinations = async () => {
+  const fetchDestinations = useCallback(async () => {
+    // Проверяем, были ли направления уже загружены
+    if (destinationsLoadedRef.current) {
+      return;
+    }
+    
     try {
       const response = await fetch('/api/admin/destinations');
       if (!response.ok) {
@@ -110,14 +127,23 @@ export default function EditTourPage({ params }: { params: { id: string } }) {
       } else {
         console.error('Неожиданный формат данных:', data);
       }
+      
+      // Отмечаем, что направления были загружены
+      destinationsLoadedRef.current = true;
     } catch (error) {
       console.error('Ошибка при загрузке направлений:', error);
       toast.error('Не удалось загрузить список направлений');
     }
-  };
+  }, []);
   
   // Загрузка данных тура
-  const fetchTourData = async () => {
+  const fetchTourData = useCallback(async () => {
+    // Проверяем, были ли данные уже загружены
+    if (dataFetchedRef.current) {
+      setLoadingData(false);
+      return;
+    }
+    
     try {
       setLoadingData(true);
       setLoadError('');
@@ -150,6 +176,8 @@ export default function EditTourPage({ params }: { params: { id: string } }) {
       setAvailableSeats(tourData.availableSeats ? tourData.availableSeats.toString() : '10');
       setNextTourDate(tourData.nextTourDate ? new Date(tourData.nextTourDate).toISOString().slice(0, 10) : '');
       
+      // Отмечаем, что данные были загружены
+      dataFetchedRef.current = true;
     } catch (error: any) {
       console.error('Ошибка при загрузке данных тура:', error);
       setLoadError(error.message || 'Не удалось загрузить данные тура');
@@ -157,7 +185,7 @@ export default function EditTourPage({ params }: { params: { id: string } }) {
     } finally {
       setLoadingData(false);
     }
-  };
+  }, [tourId]);
   
   // Генерация slug из названия
   const generateSlug = () => {

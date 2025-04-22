@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -70,6 +70,14 @@ export default function AdminToursPage() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [destinations, setDestinations] = useState<{id: number, name: string}[]>([]);
   
+  // Refs для отслеживания загрузки данных
+  const destinationsFetchedRef = useRef(false);
+  const prevFetchParamsRef = useRef({
+    page: 0,
+    search: '',
+    destinationFilter: null as number | null
+  });
+  
   // Получаем параметр фильтрации по направлению из URL
   useEffect(() => {
     const destinationId = searchParams?.get('destinationId');
@@ -90,8 +98,11 @@ export default function AdminToursPage() {
     setIsInitialized(true);
   }, [searchParams]);
   
-  // Загрузка списка направлений для фильтрации
-  const fetchDestinations = async () => {
+  // Загрузка списка направлений для фильтрации (мемоизированная)
+  const fetchDestinations = useCallback(async () => {
+    // Проверяем, были ли уже загружены направления
+    if (destinationsFetchedRef.current) return;
+    
     try {
       const response = await fetch('/api/admin/destinations');
       if (!response.ok) {
@@ -104,22 +115,36 @@ export default function AdminToursPage() {
           id: dest.id,
           name: dest.name
         })));
+        
+        // Отмечаем, что данные загружены
+        destinationsFetchedRef.current = true;
       }
     } catch (error) {
       console.error("Ошибка при загрузке направлений:", error);
     }
-  };
+  }, []);
 
   // Загружаем туры и направления при загрузке страницы
   useEffect(() => {
     if (status === 'authenticated' && session?.user.role === 'ADMIN') {
       fetchDestinations();
     }
-  }, [status, session]);
+  }, [status, session, fetchDestinations]);
   
-  // Загрузка данных
-  const fetchTours = async () => {
+  // Загрузка данных (мемоизированная)
+  const fetchTours = useCallback(async (forceRefresh = false) => {
     if (!isInitialized) return;
+    
+    // Проверяем, нужно ли выполнять повторный запрос
+    const paramsChanged = 
+      prevFetchParamsRef.current.page !== page ||
+      prevFetchParamsRef.current.search !== search ||
+      prevFetchParamsRef.current.destinationFilter !== destinationFilter;
+      
+    if (!forceRefresh && !paramsChanged && tours.length > 0) {
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -140,19 +165,38 @@ export default function AdminToursPage() {
       setTours(data.tours);
       setTotalPages(data.pagination.totalPages);
       setTotalTours(data.pagination.totalTours);
+      
+      // Обновляем предыдущие параметры запроса
+      prevFetchParamsRef.current = {
+        page,
+        search,
+        destinationFilter
+      };
     } catch (err: any) {
       setError(err.message || 'Произошла ошибка при загрузке данных');
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, destinationFilter, isInitialized, tours.length]);
   
   // Загружаем туры при изменении параметров
   useEffect(() => {
     if (status === 'authenticated' && session?.user.role === 'ADMIN' && isInitialized) {
       fetchTours();
     }
-  }, [page, search, destinationFilter, status, session, isInitialized]);
+  }, [page, search, destinationFilter, status, session, isInitialized, fetchTours]);
+  
+  // Сбрасываем кэширование при смене пользователя
+  useEffect(() => {
+    if (session?.user?.email) {
+      destinationsFetchedRef.current = false;
+      prevFetchParamsRef.current = {
+        page: 0,
+        search: '',
+        destinationFilter: null
+      };
+    }
+  }, [session?.user?.email]);
   
   // Проверка на авторизацию и роль администратора
   useEffect(() => {

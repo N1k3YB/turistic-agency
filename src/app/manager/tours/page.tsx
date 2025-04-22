@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -61,9 +61,48 @@ export default function ManagerToursPage() {
   const [destinationFilter, setDestinationFilter] = useState<number | null>(null);
   const [destinations, setDestinations] = useState<{id: number, name: string}[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Refs для отслеживания загрузки данных
+  const dataFetchedRef = useRef(false);
+  const destinationsLoadedRef = useRef(false);
+  
+  // Загрузка списка направлений для фильтрации
+  const fetchDestinations = useCallback(async () => {
+    // Проверяем, были ли данные уже загружены
+    if (destinationsLoadedRef.current) {
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/manager/destinations');
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить направления');
+      }
+      
+      const data = await response.json();
+      if (data && Array.isArray(data)) {
+        setDestinations(data.map((dest: any) => ({
+          id: dest.id,
+          name: dest.name
+        })));
+      } else if (data.destinations && Array.isArray(data.destinations)) {
+        setDestinations(data.destinations.map((dest: any) => ({
+          id: dest.id,
+          name: dest.name
+        })));
+      }
+      
+      // Отмечаем, что данные были загружены
+      destinationsLoadedRef.current = true;
+    } catch (error) {
+      console.error("Ошибка при загрузке направлений:", error);
+    }
+  }, []);
 
   // Получаем параметр фильтрации по направлению из URL
   useEffect(() => {
+    if (!searchParams) return;
+    
     const destinationId = searchParams.get('destinationId');
     if (destinationId) {
       const id = parseInt(destinationId);
@@ -100,35 +139,18 @@ export default function ManagerToursPage() {
       // Загружаем направления
       fetchDestinations();
     }
-  }, [status, session, router]);
-
-  // Загрузка списка направлений для фильтрации
-  const fetchDestinations = async () => {
-    try {
-      const response = await fetch('/api/manager/destinations');
-      if (!response.ok) {
-        throw new Error('Не удалось загрузить направления');
-      }
-      
-      const data = await response.json();
-      if (data && Array.isArray(data)) {
-        setDestinations(data.map((dest: any) => ({
-          id: dest.id,
-          name: dest.name
-        })));
-      } else if (data.destinations && Array.isArray(data.destinations)) {
-        setDestinations(data.destinations.map((dest: any) => ({
-          id: dest.id,
-          name: dest.name
-        })));
-      }
-    } catch (error) {
-      console.error("Ошибка при загрузке направлений:", error);
+  }, [status, session, router, fetchDestinations]);
+  
+  // Сбрасываем флаги загрузки данных при смене пользователя
+  useEffect(() => {
+    if (session?.user?.email) {
+      dataFetchedRef.current = false;
+      destinationsLoadedRef.current = false;
     }
-  };
+  }, [session?.user?.email]);
 
   // Обработчик изменения фильтра направления
-  const handleDestinationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleDestinationChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     const id = value ? parseInt(value) : null;
     
@@ -143,10 +165,20 @@ export default function ManagerToursPage() {
     
     setDestinationFilter(id);
     setPage(1); // Сбрасываем на первую страницу
-  };
+  }, [router]);
 
-  const fetchTours = async () => {
+  const fetchTours = useCallback(async () => {
     if (!isInitialized) return;
+    
+    // Для туров мы сбрасываем dataFetchedRef при изменении параметров фильтрации
+    if (dataFetchedRef.current) {
+      if (search !== '' || destinationFilter !== null || page !== 1) {
+        dataFetchedRef.current = false;
+      } else {
+        setLoading(false);
+        return;
+      }
+    }
     
     try {
       setLoading(true);
@@ -197,41 +229,44 @@ export default function ManagerToursPage() {
       } else {
         setTours([]);
       }
+      
+      // Отмечаем, что данные были загружены
+      dataFetchedRef.current = true;
     } catch (error: any) {
       console.error("Ошибка при загрузке туров:", error);
       setError(error.message || 'Произошла ошибка при загрузке туров');
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, destinationFilter, isInitialized]);
 
   // Загружаем туры при изменении параметров
   useEffect(() => {
     if (status === 'authenticated' && session?.user.role === 'MANAGER' && isInitialized) {
       fetchTours();
     }
-  }, [page, search, destinationFilter, status, session, isInitialized]);
+  }, [page, search, destinationFilter, status, session, isInitialized, fetchTours]);
 
   // Функции для поиска и пагинации
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
     setPage(1); // Сбрасываем на первую страницу
-  };
+  }, []);
 
-  const handlePageChange = (newPage: number) => {
+  const handlePageChange = useCallback((newPage: number) => {
     if (newPage > 0 && newPage <= totalPages) {
       setPage(newPage);
     }
-  };
+  }, [totalPages]);
 
   // Функция для подготовки к удалению тура
-  const confirmDelete = (tour: Tour) => {
+  const confirmDelete = useCallback((tour: Tour) => {
     setTourToDelete(tour);
     setShowDeleteModal(true);
-  };
+  }, []);
 
   // Функция для удаления тура
-  const deleteTour = async () => {
+  const deleteTour = useCallback(async () => {
     if (!tourToDelete) return;
     
     try {
@@ -245,7 +280,7 @@ export default function ManagerToursPage() {
       }
       
       // Обновляем список туров
-      setTours(tours.filter(tour => tour.id !== tourToDelete.id));
+      setTours(prevTours => prevTours.filter(tour => tour.id !== tourToDelete.id));
       toast.success('Тур успешно удален');
       setShowDeleteModal(false);
       setTourToDelete(null);
@@ -255,7 +290,7 @@ export default function ManagerToursPage() {
     } finally {
       setProcessingDelete(false);
     }
-  };
+  }, [tourToDelete]);
 
   // Форматирование даты
   const formatDate = (dateString: string | null) => {

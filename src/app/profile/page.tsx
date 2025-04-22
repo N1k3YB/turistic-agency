@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { UserIcon, EnvelopeIcon, PhoneIcon, MapPinIcon, CalendarIcon, LockClosedIcon, ShoppingCartIcon, HeartIcon, XMarkIcon, ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import ImageWithFallback from "@/components/ImageWithFallback";
@@ -92,33 +92,27 @@ export default function ProfilePage() {
   const [lastTicket, setLastTicket] = useState<Ticket | null>(null);
   const [loadingTickets, setLoadingTickets] = useState(true);
   
-  // Упрощенный интерфейс для пользователя
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
-    }
+  // Добавляем новые состояния для редактирования профиля
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [profileErrors, setProfileErrors] = useState<{name?: string, phone?: string, address?: string}>({});
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  
+  // Добавляем флаги для отслеживания, были ли загружены данные
+  const dataFetchedRef = useRef({
+    userData: false,
+    orders: false,
+    favorites: false,
+    tickets: false
+  });
+
+  // Функция для загрузки дополнительных данных пользователя (мемоизированная)
+  const fetchUserData = useCallback(async () => {
+    // Если данные уже были загружены, не выполняем запрос снова
+    if (dataFetchedRef.current.userData) return;
     
-    if (session?.user) {
-      setUserData(prev => ({
-        ...prev,
-        name: session.user.name || "",
-        email: session.user.email || "",
-      }));
-
-      // Загружаем пользовательские данные
-      fetchUserData();
-
-      // Загружаем заказы и избранные туры
-      fetchOrders();
-      fetchFavorites();
-      
-      // Загружаем последний тикет
-      fetchLastTicket();
-    }
-  }, [session, status, router]);
-
-  // Функция для загрузки дополнительных данных пользователя
-  const fetchUserData = async () => {
     try {
       const response = await fetch('/api/user/profile');
       
@@ -133,13 +127,27 @@ export default function ProfilePage() {
         address: userData.address || "",
         registeredDate: userData.createdAt ? new Date(userData.createdAt) : new Date(),
       }));
+      
+      // Также обновляем поля редактирования
+      setEditName(userData.name || "");
+      setEditPhone(userData.phone || "");
+      setEditAddress(userData.address || "");
+      
+      // Отмечаем, что данные были загружены
+      dataFetchedRef.current.userData = true;
     } catch (error) {
       console.error("Ошибка при загрузке данных пользователя:", error);
     }
-  };
+  }, []);
 
-  // Функция для загрузки заказов
-  const fetchOrders = async () => {
+  // Функция для загрузки заказов (мемоизированная)
+  const fetchOrders = useCallback(async () => {
+    // Если заказы уже были загружены, не выполняем запрос снова
+    if (dataFetchedRef.current.orders) {
+      setLoadingOrders(false);
+      return;
+    }
+    
     try {
       setLoadingOrders(true);
       const response = await fetch('/api/orders');
@@ -150,15 +158,24 @@ export default function ProfilePage() {
       
       const data = await response.json();
       setOrders(data);
+      
+      // Отмечаем, что заказы были загружены
+      dataFetchedRef.current.orders = true;
     } catch (error) {
       console.error("Ошибка при загрузке заказов:", error);
     } finally {
       setLoadingOrders(false);
     }
-  };
+  }, []);
 
-  // Функция для загрузки избранных туров
-  const fetchFavorites = async () => {
+  // Функция для загрузки избранных туров (мемоизированная)
+  const fetchFavorites = useCallback(async () => {
+    // Если избранные уже были загружены, не выполняем запрос снова
+    if (dataFetchedRef.current.favorites) {
+      setLoadingFavorites(false);
+      return;
+    }
+    
     try {
       setLoadingFavorites(true);
       const response = await fetch('/api/favorites');
@@ -169,15 +186,24 @@ export default function ProfilePage() {
       
       const data = await response.json();
       setFavorites(data);
+      
+      // Отмечаем, что избранные были загружены
+      dataFetchedRef.current.favorites = true;
     } catch (error) {
       console.error("Ошибка при загрузке избранных туров:", error);
     } finally {
       setLoadingFavorites(false);
     }
-  };
+  }, []);
 
-  // Функция для загрузки последнего тикета
-  const fetchLastTicket = async () => {
+  // Функция для загрузки последнего тикета (мемоизированная)
+  const fetchLastTicket = useCallback(async () => {
+    // Если тикеты уже были загружены, не выполняем запрос снова
+    if (dataFetchedRef.current.tickets) {
+      setLoadingTickets(false);
+      return;
+    }
+    
     try {
       setLoadingTickets(true);
       const response = await fetch('/api/tickets');
@@ -191,12 +217,53 @@ export default function ProfilePage() {
       if (tickets.length > 0) {
         setLastTicket(tickets[0]);
       }
+      
+      // Отмечаем, что тикеты были загружены
+      dataFetchedRef.current.tickets = true;
     } catch (error) {
       console.error("Ошибка при загрузке тикетов:", error);
     } finally {
       setLoadingTickets(false);
     }
-  };
+  }, []);
+
+  // Упрощенный интерфейс для пользователя
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+    }
+    
+    if (session?.user) {
+      setUserData(prev => ({
+        ...prev,
+        name: session.user.name || "",
+        email: session.user.email || "",
+      }));
+
+      // Загружаем данные только если они еще не загружены
+      fetchUserData();
+      fetchOrders();
+      fetchFavorites();
+      fetchLastTicket();
+    }
+  }, [session, status, router, fetchUserData, fetchOrders, fetchFavorites, fetchLastTicket]);
+
+  // Функция для сброса кэшированных данных при изменении пользователя
+  const resetDataFetchFlags = useCallback(() => {
+    dataFetchedRef.current = {
+      userData: false,
+      orders: false,
+      favorites: false,
+      tickets: false
+    };
+  }, []);
+
+  // Сбрасываем флаги загрузки при изменении пользователя
+  useEffect(() => {
+    if (session?.user?.email) {
+      resetDataFetchFlags();
+    }
+  }, [session?.user?.email, resetDataFetchFlags]);
 
   // Форматирование даты
   const formatDate = (dateString: string | null) => {
@@ -303,6 +370,100 @@ export default function ProfilePage() {
     }
   };
 
+  // Функция для обновления профиля
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileErrors({});
+    
+    // Валидация
+    let hasErrors = false;
+    const errors: {name?: string, phone?: string, address?: string} = {};
+    
+    if (!editName || editName.length < 2) {
+      errors.name = "Имя должно содержать минимум 2 символа";
+      hasErrors = true;
+    }
+    
+    if (editPhone) {
+      // Проверка формата телефона (российский номер)
+      const phoneRegex = /^(\+7|8)[0-9]{10}$/;
+      if (!phoneRegex.test(editPhone)) {
+        errors.phone = "Номер телефона должен быть в формате +7XXXXXXXXXX или 8XXXXXXXXXX";
+        hasErrors = true;
+      }
+    }
+    
+    if (editAddress) {
+      // Проверка формата адреса (только город на русском)
+      const addressRegex = /^[А-Яа-яЁё\s-]+$/;
+      if (!addressRegex.test(editAddress)) {
+        errors.address = "Адрес должен содержать только название города на русском языке";
+        hasErrors = true;
+      }
+    }
+    
+    if (hasErrors) {
+      setProfileErrors(errors);
+      return;
+    }
+    
+    setIsUpdatingProfile(true);
+    
+    try {
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: editName,
+          phone: editPhone || null,
+          address: editAddress || null,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Не удалось обновить профиль');
+      }
+      
+      // Успешное обновление профиля
+      toast.success("Профиль успешно обновлен");
+      
+      // Обновляем данные пользователя
+      setUserData(prev => ({
+        ...prev,
+        name: editName,
+        phone: editPhone || "",
+        address: editAddress || "",
+      }));
+      
+      // Обновляем имя пользователя в сессии
+      if (session?.user) {
+        session.user.name = editName;
+      }
+      
+      // Выходим из режима редактирования
+      setIsEditingProfile(false);
+    } catch (error: any) {
+      const errorMessage = error.message || "Произошла ошибка при обновлении профиля";
+      
+      // Обрабатываем ошибки валидации
+      if (errorMessage.includes("Имя должно")) {
+        setProfileErrors(prev => ({ ...prev, name: errorMessage }));
+      } else if (errorMessage.includes("Номер телефона")) {
+        setProfileErrors(prev => ({ ...prev, phone: errorMessage }));
+      } else if (errorMessage.includes("Адрес должен")) {
+        setProfileErrors(prev => ({ ...prev, address: errorMessage }));
+      } else {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
+
   if (status === "loading") {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
@@ -328,48 +489,134 @@ export default function ProfilePage() {
                 session?.user?.role === 'MANAGER' ? 'Менеджер' : 'Пользователь'}</p>
             </div>
             
-            <div className="space-y-4">
-              <div className="flex items-start">
-                <EnvelopeIcon className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
-                <div>
-                  <p className="text-sm text-gray-500">Email</p>
-                  <p className="font-medium">{userData.email}</p>
+            {isEditingProfile ? (
+              // Форма редактирования профиля
+              <form onSubmit={handleUpdateProfile}>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="edit-name" className="block text-sm font-medium text-gray-700 mb-1">
+                      Имя
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-name"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className={`w-full border ${profileErrors.name ? 'border-red-500' : 'border-gray-300'} rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      required
+                    />
+                    {profileErrors.name && (
+                      <p className="mt-1 text-xs text-red-600">{profileErrors.name}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="edit-phone" className="block text-sm font-medium text-gray-700 mb-1">
+                      Телефон
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-phone"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      placeholder="+7XXXXXXXXXX"
+                      className={`w-full border ${profileErrors.phone ? 'border-red-500' : 'border-gray-300'} rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    />
+                    {profileErrors.phone && (
+                      <p className="mt-1 text-xs text-red-600">{profileErrors.phone}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="edit-address" className="block text-sm font-medium text-gray-700 mb-1">
+                      Город
+                    </label>
+                    <input
+                      type="text"
+                      id="edit-address"
+                      value={editAddress}
+                      onChange={(e) => setEditAddress(e.target.value)}
+                      placeholder="Москва"
+                      className={`w-full border ${profileErrors.address ? 'border-red-500' : 'border-gray-300'} rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    />
+                    {profileErrors.address && (
+                      <p className="mt-1 text-xs text-red-600">{profileErrors.address}</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex justify-between pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingProfile(false)}
+                      className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-sm font-medium transition-colors"
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isUpdatingProfile}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
+                    >
+                      {isUpdatingProfile ? "Сохранение..." : "Сохранить"}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            ) : (
+              // Отображение информации о пользователе
+              <div className="space-y-4">
+                <div className="flex items-start">
+                  <EnvelopeIcon className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Email</p>
+                    <p className="font-medium">{userData.email}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <PhoneIcon className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Телефон</p>
+                    <p className="font-medium">{userData.phone || "Отсутствует"}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <MapPinIcon className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Город</p>
+                    <p className="font-medium">{userData.address || "Отсутствует"}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <CalendarIcon className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Дата регистрации</p>
+                    <p className="font-medium">{userData.registeredDate.toLocaleDateString()}</p>
+                  </div>
                 </div>
               </div>
-              
-              <div className="flex items-start">
-                <PhoneIcon className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
-                <div>
-                  <p className="text-sm text-gray-500">Телефон</p>
-                  <p className="font-medium">{userData.phone}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start">
-                <MapPinIcon className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
-                <div>
-                  <p className="text-sm text-gray-500">Адрес</p>
-                  <p className="font-medium">{userData.address}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start">
-                <CalendarIcon className="h-5 w-5 text-gray-400 mr-2 mt-0.5" />
-                <div>
-                  <p className="text-sm text-gray-500">Дата регистрации</p>
-                  <p className="font-medium">{userData.registeredDate.toLocaleDateString()}</p>
-                </div>
-              </div>
-            </div>
+            )}
             
             <div className="mt-6 pt-6 border-t border-gray-200">
-              <button 
-                onClick={() => setShowPasswordModal(true)}
-                className="w-full flex items-center justify-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-medium transition-colors"
-              >
-                <LockClosedIcon className="h-4 w-4 mr-2" />
-                Изменить пароль
-              </button>
+              {isEditingProfile ? (
+                <button 
+                  onClick={() => setShowPasswordModal(true)}
+                  className="w-full flex items-center justify-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-medium transition-colors"
+                >
+                  <LockClosedIcon className="h-4 w-4 mr-2" />
+                  Изменить пароль
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setIsEditingProfile(true)}
+                  className="w-full flex items-center justify-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 font-medium transition-colors"
+                >
+                  <UserIcon className="h-4 w-4 mr-2" />
+                  Редактировать профиль
+                </button>
+              )}
             </div>
           </div>
         </div>

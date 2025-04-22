@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -38,6 +38,38 @@ export default function FavoritesPage() {
   const [favorites, setFavorites] = useState<FavoriteTour[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Флаг для отслеживания загрузки данных
+  const dataFetchedRef = useRef(false);
+
+  // Мемоизированная функция для загрузки избранных туров
+  const fetchFavorites = useCallback(async () => {
+    // Если данные уже загружены, не делаем повторный запрос
+    if (dataFetchedRef.current) {
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const response = await fetch('/api/favorites');
+      
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить избранные туры');
+      }
+      
+      const data = await response.json();
+      setFavorites(data);
+      
+      // Отмечаем, что данные загружены
+      dataFetchedRef.current = true;
+    } catch (error) {
+      console.error("Ошибка при загрузке избранных туров:", error);
+      setError('Произошла ошибка при загрузке избранных туров');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     // Если пользователь не авторизован, перенаправляем на страницу входа
@@ -50,28 +82,17 @@ export default function FavoritesPage() {
     if (status === 'authenticated') {
       fetchFavorites();
     }
-  }, [status, router]);
+  }, [status, router, fetchFavorites]);
 
-  const fetchFavorites = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/favorites');
-      
-      if (!response.ok) {
-        throw new Error('Не удалось загрузить избранные туры');
-      }
-      
-      const data = await response.json();
-      setFavorites(data);
-    } catch (error) {
-      console.error("Ошибка при загрузке избранных туров:", error);
-      setError('Произошла ошибка при загрузке избранных туров');
-    } finally {
-      setLoading(false);
+  // Сбрасываем флаг загрузки при изменении пользователя
+  useEffect(() => {
+    if (session?.user?.email) {
+      dataFetchedRef.current = false;
     }
-  };
+  }, [session?.user?.email]);
 
-  const removeFromFavorites = async (tourId: number) => {
+  // Мемоизированная функция для удаления из избранного
+  const removeFromFavorites = useCallback(async (tourId: number) => {
     try {
       const response = await fetch(`/api/favorites?tourId=${tourId}`, {
         method: 'DELETE',
@@ -88,7 +109,7 @@ export default function FavoritesPage() {
       console.error("Ошибка при удалении из избранного:", error);
       toast.error('Произошла ошибка');
     }
-  };
+  }, [favorites]);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Даты уточняйте у менеджера';

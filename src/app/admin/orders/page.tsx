@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -50,6 +50,38 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingOrderId, setProcessingOrderId] = useState<number | null>(null);
+  
+  // Ref для отслеживания загрузки данных
+  const dataFetchedRef = useRef(false);
+
+  // Мемоизированная функция для загрузки заказов
+  const fetchOrders = useCallback(async () => {
+    // Проверяем, были ли данные уже загружены
+    if (dataFetchedRef.current) {
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/orders');
+      
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить заказы');
+      }
+      
+      const data = await response.json();
+      setOrders(data);
+      
+      // Отмечаем, что данные были загружены
+      dataFetchedRef.current = true;
+    } catch (error) {
+      console.error("Ошибка при загрузке заказов:", error);
+      setError('Произошла ошибка при загрузке заказов');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     // Если пользователь не авторизован, перенаправляем на страницу входа
@@ -69,29 +101,17 @@ export default function AdminOrdersPage() {
       // Загружаем заказы
       fetchOrders();
     }
-  }, [status, session, router]);
+  }, [status, session, router, fetchOrders]);
 
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/admin/orders');
-      
-      if (!response.ok) {
-        throw new Error('Не удалось загрузить заказы');
-      }
-      
-      const data = await response.json();
-      setOrders(data);
-    } catch (error) {
-      console.error("Ошибка при загрузке заказов:", error);
-      setError('Произошла ошибка при загрузке заказов');
-    } finally {
-      setLoading(false);
+  // Сбрасываем флаг загрузки данных при смене пользователя
+  useEffect(() => {
+    if (session?.user?.email) {
+      dataFetchedRef.current = false;
     }
-  };
+  }, [session?.user?.email]);
 
-  // Обновление статуса заказа
-  const updateOrderStatus = async (orderId: number, newStatus: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED') => {
+  // Мемоизированная функция для обновления статуса заказа
+  const updateOrderStatus = useCallback(async (orderId: number, newStatus: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED') => {
     try {
       setProcessingOrderId(orderId);
       const response = await fetch('/api/admin/orders', {
@@ -113,9 +133,11 @@ export default function AdminOrdersPage() {
       // Обновляем список заказов
       const updatedOrder = await response.json();
       
-      setOrders(orders.map(order => 
-        order.id === orderId ? { ...order, status: newStatus } : order
-      ));
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId ? { ...order, status: newStatus } : order
+        )
+      );
       
       toast.success(`Статус заказа изменен на "${getStatusName(newStatus)}"`);
     } catch (error: any) {
@@ -124,7 +146,7 @@ export default function AdminOrdersPage() {
     } finally {
       setProcessingOrderId(null);
     }
-  };
+  }, []);
 
   // Возвращает название статуса на русском
   const getStatusName = (status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED') => {

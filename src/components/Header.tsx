@@ -40,11 +40,11 @@ const Header: React.FC = () => {
               Направления
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
             </Link>
-            <Link href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors relative group">
+            <Link href="/about" className="text-gray-700 hover:text-blue-600 font-medium transition-colors relative group">
               О нас
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
             </Link>
-            <Link href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors relative group">
+            <Link href="/contacts" className="text-gray-700 hover:text-blue-600 font-medium transition-colors relative group">
               Контакты
               <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-600 group-hover:w-full transition-all duration-300"></span>
             </Link>
@@ -131,10 +131,10 @@ const Header: React.FC = () => {
               <Link href="/destinations" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
                 Направления
               </Link>
-              <Link href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+              <Link href="/about" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
                 О нас
               </Link>
-              <Link href="#" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+              <Link href="/contacts" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
                 Контакты
               </Link>
             </div>

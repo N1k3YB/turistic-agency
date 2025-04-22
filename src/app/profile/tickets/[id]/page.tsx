@@ -345,7 +345,7 @@ export default function TicketDetailPage({ params }: { params: { id: string } })
           
           {/* Сообщение о закрытом тикете */}
           {ticket.status === "CLOSED" && (
-            <div className="p-4 border-t border-gray-200 bg-gray-50">
+            <div className="p-4 border-t border-gray-200">
               <p className="text-center text-gray-500">Этот запрос закрыт и не может быть обновлен</p>
             </div>
           )}

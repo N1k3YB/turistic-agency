@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -45,47 +45,18 @@ export default function ManagerDestinationsPage() {
   const [filteredDestinations, setFilteredDestinations] = useState<Destination[]>([]);
   const [sortField, setSortField] = useState<'name' | 'createdAt' | 'toursCount'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-
-  useEffect(() => {
-    // Если пользователь не авторизован, перенаправляем на страницу входа
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin');
+  
+  // Ref для отслеживания загрузки данных
+  const dataFetchedRef = useRef(false);
+  
+  // Мемоизированная функция для загрузки направлений
+  const fetchDestinations = useCallback(async () => {
+    // Проверяем, были ли данные уже загружены
+    if (dataFetchedRef.current) {
+      setLoading(false);
       return;
     }
-
-    // Проверяем роль пользователя
-    if (status === 'authenticated') {
-      const userRole = session?.user?.role;
-      if (userRole !== 'MANAGER') {
-        router.push('/');
-        return;
-      }
-
-      // Загружаем направления
-      fetchDestinations();
-    }
-  }, [status, session, router]);
-
-  // Фильтрация направлений при изменении поискового запроса
-  useEffect(() => {
-    if (search.trim() === '') {
-      setFilteredDestinations(destinations);
-    } else {
-      const searchLower = search.toLowerCase();
-      setFilteredDestinations(
-        destinations.filter(
-          dest => 
-            dest.name.toLowerCase().includes(searchLower) || 
-            dest.description.toLowerCase().includes(searchLower)
-        )
-      );
-    }
     
-    // Применяем сортировку после фильтрации
-    sortDestinations(sortField, sortDirection);
-  }, [search, destinations, sortField, sortDirection]);
-
-  const fetchDestinations = async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/manager/destinations');
@@ -132,13 +103,62 @@ export default function ManagerDestinationsPage() {
         setDestinations([]);
         setFilteredDestinations([]);
       }
+      
+      // Отмечаем, что данные были загружены
+      dataFetchedRef.current = true;
     } catch (error) {
       console.error("Ошибка при загрузке направлений:", error);
       setError('Произошла ошибка при загрузке направлений');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // Если пользователь не авторизован, перенаправляем на страницу входа
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin');
+      return;
+    }
+
+    // Проверяем роль пользователя
+    if (status === 'authenticated') {
+      const userRole = session?.user?.role;
+      if (userRole !== 'MANAGER') {
+        router.push('/');
+        return;
+      }
+
+      // Загружаем направления
+      fetchDestinations();
+    }
+  }, [status, session, router, fetchDestinations]);
+  
+  // Сбрасываем флаг загрузки данных при смене пользователя
+  useEffect(() => {
+    if (session?.user?.email) {
+      dataFetchedRef.current = false;
+    }
+  }, [session?.user?.email]);
+
+  // Фильтрация направлений при изменении поискового запроса
+  useEffect(() => {
+    if (search.trim() === '') {
+      setFilteredDestinations(destinations);
+    } else {
+      const searchLower = search.toLowerCase();
+      setFilteredDestinations(
+        destinations.filter(
+          dest => 
+            dest.name.toLowerCase().includes(searchLower) || 
+            dest.description.toLowerCase().includes(searchLower)
+        )
+      );
+    }
+    
+    // Применяем сортировку после фильтрации
+    sortDestinations(sortField, sortDirection);
+  }, [search, destinations, sortField, sortDirection]);
 
   // Функция для подготовки к удалению направления
   const confirmDelete = (destination: Destination) => {
@@ -147,7 +167,7 @@ export default function ManagerDestinationsPage() {
   };
 
   // Функция для удаления направления
-  const deleteDestination = async () => {
+  const deleteDestination = useCallback(async () => {
     if (!destinationToDelete) return;
     
     try {
@@ -161,8 +181,8 @@ export default function ManagerDestinationsPage() {
       }
       
       // Обновляем список направлений
-      setDestinations(destinations.filter(d => d.id !== destinationToDelete.id));
-      setFilteredDestinations(filteredDestinations.filter(d => d.id !== destinationToDelete.id));
+      setDestinations(prevDestinations => prevDestinations.filter(d => d.id !== destinationToDelete.id));
+      setFilteredDestinations(prevFiltered => prevFiltered.filter(d => d.id !== destinationToDelete.id));
       toast.success('Направление успешно удалено');
       setShowDeleteModal(false);
       setDestinationToDelete(null);
@@ -172,7 +192,7 @@ export default function ManagerDestinationsPage() {
     } finally {
       setProcessingDelete(false);
     }
-  };
+  }, [destinationToDelete]);
 
   // Обработчик изменения поискового запроса
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {

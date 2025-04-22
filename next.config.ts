@@ -4,6 +4,7 @@ const nextConfig = {
   experimental: {
     // forceSwcTransforms: true, // Удаляем это поле, чтобы Turbopack мог работать
   },
+  devIndicators: false,
   images: {
     remotePatterns: [
       {

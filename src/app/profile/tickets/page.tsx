@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -60,6 +60,16 @@ export default function UserTicketsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [sortOption, setSortOption] = useState("newest");
   const [newResponse, setNewResponse] = useState("");
+  
+  // Ref для отслеживания предыдущих параметров запроса
+  const prevParamsRef = useRef({ 
+    statusFilter: "",
+    sortOption: "newest",
+    searchQuery: ""
+  });
+  
+  // Ref для отслеживания, была ли загрузка данных
+  const initialLoadDoneRef = useRef(false);
 
   // Проверка авторизации
   useEffect(() => {
@@ -68,28 +78,18 @@ export default function UserTicketsPage() {
     }
   }, [status, router]);
 
-  // Загрузка тикетов пользователя
-  useEffect(() => {
-    if (status === "authenticated") {
-      fetchTickets();
+  // Мемоизированная функция для загрузки тикетов
+  const fetchTickets = useCallback(async (forceRefresh = false) => {
+    // Проверяем, нужно ли выполнять запрос
+    const paramsChanged = 
+      prevParamsRef.current.statusFilter !== statusFilter ||
+      prevParamsRef.current.sortOption !== sortOption ||
+      prevParamsRef.current.searchQuery !== searchQuery;
+    
+    if (!forceRefresh && initialLoadDoneRef.current && !paramsChanged) {
+      return; // Пропускаем запрос, если параметры не изменились и начальная загрузка выполнена
     }
-  }, [status, statusFilter, sortOption]);
-
-  // Установка выбранного тикета из URL
-  useEffect(() => {
-    const ticketId = searchParams?.get("id");
-    if (ticketId && tickets.length > 0) {
-      const ticket = tickets.find(t => t.id.toString() === ticketId);
-      if (ticket) {
-        setSelectedTicket(ticket);
-      }
-    } else if (tickets.length > 0 && !selectedTicket) {
-      setSelectedTicket(tickets[0]);
-    }
-  }, [searchParams, tickets, selectedTicket]);
-
-  // Функция для загрузки тикетов
-  const fetchTickets = async () => {
+    
     try {
       setLoading(true);
       setError(null);
@@ -111,16 +111,51 @@ export default function UserTicketsPage() {
       if (data.length > 0 && !selectedTicket) {
         setSelectedTicket(data[0]);
       }
+      
+      // Обновляем предыдущие параметры и отмечаем начальную загрузку как выполненную
+      prevParamsRef.current = {
+        statusFilter,
+        sortOption,
+        searchQuery
+      };
+      initialLoadDoneRef.current = true;
     } catch (error) {
       console.error("Ошибка:", error);
       setError("Не удалось загрузить обращения. Пожалуйста, попробуйте позже.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, sortOption, searchQuery, selectedTicket]);
 
-  // Отправка ответа на тикет
-  const sendResponse = async (e: React.FormEvent) => {
+  // Загрузка тикетов пользователя
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchTickets();
+    }
+  }, [status, fetchTickets]);
+
+  // Сбросить флаг загрузки при изменении пользователя
+  useEffect(() => {
+    if (session?.user?.email) {
+      initialLoadDoneRef.current = false;
+    }
+  }, [session?.user?.email]);
+
+  // Установка выбранного тикета из URL
+  useEffect(() => {
+    const ticketId = searchParams?.get("id");
+    if (ticketId && tickets.length > 0) {
+      const ticket = tickets.find(t => t.id.toString() === ticketId);
+      if (ticket) {
+        setSelectedTicket(ticket);
+      }
+    } else if (tickets.length > 0 && !selectedTicket) {
+      setSelectedTicket(tickets[0]);
+    }
+  }, [searchParams, tickets, selectedTicket]);
+
+  // Мемоизированная функция для отправки ответа на тикет
+  const sendResponse = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedTicket || !newResponse.trim()) return;
@@ -166,12 +201,12 @@ export default function UserTicketsPage() {
       console.error("Ошибка:", error);
       setError("Не удалось отправить ответ");
     }
-  };
+  }, [selectedTicket, newResponse]);
 
   // Выполнение поиска
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchTickets();
+    fetchTickets(true); // Принудительное обновление при поиске
   };
 
   // Форматирование даты
@@ -477,7 +512,7 @@ export default function UserTicketsPage() {
               
               {/* Сообщение о закрытом тикете */}
               {selectedTicket.status === "CLOSED" && (
-                <div className="p-4 border-t border-gray-200 bg-gray-50">
+                <div className="p-4 border-t border-gray-200">
                   <p className="text-center text-gray-500">Этот запрос закрыт и не может быть обновлен</p>
                 </div>
               )}

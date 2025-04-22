@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -35,24 +35,17 @@ export default function EditDestinationPage({ params }: { params: { id: string }
   const [loadingData, setLoadingData] = useState(true);
   const [loadError, setLoadError] = useState('');
   
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin');
+  // Ref для отслеживания загрузки данных
+  const dataFetchedRef = useRef(false);
+  
+  // Меморизированная функция для загрузки данных направления
+  const fetchDestinationData = useCallback(async () => {
+    // Проверяем, были ли данные уже загружены
+    if (dataFetchedRef.current) {
+      setLoadingData(false);
       return;
     }
     
-    if (status === 'authenticated') {
-      const userRole = session?.user?.role;
-      if (userRole !== 'ADMIN') {
-        router.push('/');
-        return;
-      }
-      
-      fetchDestinationData();
-    }
-  }, [status, session, router, destinationId]);
-  
-  const fetchDestinationData = async () => {
     try {
       setLoadingData(true);
       setLoadError('');
@@ -71,6 +64,8 @@ export default function EditDestinationPage({ params }: { params: { id: string }
       setDescription(destinationData.description || '');
       setImageUrl(destinationData.imageUrl || '');
       
+      // Отмечаем, что данные были загружены
+      dataFetchedRef.current = true;
     } catch (error: any) {
       console.error('Ошибка при загрузке данных направления:', error);
       setLoadError(error.message || 'Не удалось загрузить данные направления');
@@ -78,7 +73,31 @@ export default function EditDestinationPage({ params }: { params: { id: string }
     } finally {
       setLoadingData(false);
     }
-  };
+  }, [destinationId]);
+  
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin');
+      return;
+    }
+    
+    if (status === 'authenticated') {
+      const userRole = session?.user?.role;
+      if (userRole !== 'ADMIN') {
+        router.push('/');
+        return;
+      }
+      
+      fetchDestinationData();
+    }
+  }, [status, session, router, fetchDestinationData]);
+  
+  // Сбрасываем флаг загрузки данных при смене пользователя или идентификатора направления
+  useEffect(() => {
+    if (session?.user?.email || destinationId) {
+      dataFetchedRef.current = false;
+    }
+  }, [session?.user?.email, destinationId]);
   
   const generateSlug = () => {
     const generatedSlug = name

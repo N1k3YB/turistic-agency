@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Fragment, useEffect, useState } from 'react';
+import React, { Fragment, useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -30,9 +30,6 @@ interface User {
   phone: string | null;
   address: string | null;
   createdAt: string | null;
-  _count: {
-    reviews: number;
-  };
 }
 
 // Интерфейс для данных ответа API
@@ -72,8 +69,26 @@ export default function AdminUsersPage() {
     error?: string;
   } | null>(null);
   
-  // Загрузка данных
-  const fetchUsers = async () => {
+  // Ref для отслеживания предыдущих параметров запроса
+  const prevFetchParamsRef = useRef({
+    page: 0,
+    search: '',
+    selectedRole: ''
+  });
+  
+  // Загрузка данных (мемоизированная)
+  const fetchUsers = useCallback(async (forceRefresh = false) => {
+    // Проверяем, нужно ли выполнять повторный запрос
+    const paramsChanged = 
+      prevFetchParamsRef.current.page !== page ||
+      prevFetchParamsRef.current.search !== search ||
+      prevFetchParamsRef.current.selectedRole !== selectedRole;
+      
+    if (!forceRefresh && !paramsChanged && users.length > 0) {
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     
@@ -93,19 +108,37 @@ export default function AdminUsersPage() {
       setUsers(data.users);
       setTotalPages(data.pagination.totalPages);
       setTotalUsers(data.pagination.totalUsers);
+      
+      // Обновляем предыдущие параметры запроса
+      prevFetchParamsRef.current = {
+        page,
+        search,
+        selectedRole
+      };
     } catch (err: any) {
       setError(err.message || 'Произошла ошибка при загрузке данных');
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, selectedRole, users.length]);
   
   // Загружаем пользователей при изменении параметров
   useEffect(() => {
     if (status === 'authenticated' && session?.user.role === 'ADMIN') {
       fetchUsers();
     }
-  }, [page, search, selectedRole, status, session]);
+  }, [page, search, selectedRole, status, session, fetchUsers]);
+  
+  // Сбрасываем параметры кэширования при смене пользователя
+  useEffect(() => {
+    if (session?.user?.email) {
+      prevFetchParamsRef.current = {
+        page: 0,
+        search: '',
+        selectedRole: ''
+      };
+    }
+  }, [session?.user?.email]);
   
   // Проверка на авторизацию и роль администратора
   useEffect(() => {
@@ -318,7 +351,6 @@ export default function AdminUsersPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Роль</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Подтверждение</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата регистрации</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Отзывы</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
               </tr>
             </thead>
@@ -381,9 +413,6 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user._count.reviews}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-2">

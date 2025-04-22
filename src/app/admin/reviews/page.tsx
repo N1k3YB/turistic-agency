@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -48,36 +48,58 @@ export default function AdminReviewsPage() {
   const [expandedReviewId, setExpandedReviewId] = useState<number | null>(null);
   const reviewsContainerRef = useRef<HTMLDivElement>(null);
   
-  useEffect(() => {
-    const fetchReviews = async () => {
-      if (status === 'loading') return;
-      
-      if (!session || session.user.role !== 'ADMIN') {
-        setError('Доступ запрещен. Эта страница доступна только администраторам.');
-        setLoading(false);
-        return;
-      }
-      
-      try {
-        const response = await fetch('/api/admin/reviews');
-        
-        if (!response.ok) {
-          throw new Error('Не удалось загрузить отзывы');
-        }
-        
-        const data = await response.json();
-        setReviews(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Ref для отслеживания загрузки данных
+  const dataFetchedRef = useRef(false);
+  
+  // Мемоизированная функция для загрузки отзывов
+  const fetchReviews = useCallback(async () => {
+    if (status === 'loading') return;
     
-    fetchReviews();
+    if (!session || session.user.role !== 'ADMIN') {
+      setError('Доступ запрещен. Эта страница доступна только администраторам.');
+      setLoading(false);
+      return;
+    }
+    
+    // Проверяем, были ли данные уже загружены
+    if (dataFetchedRef.current) {
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/reviews');
+      
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить отзывы');
+      }
+      
+      const data = await response.json();
+      setReviews(data);
+      
+      // Отмечаем, что данные были загружены
+      dataFetchedRef.current = true;
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   }, [session, status]);
   
-  const handleApprove = async (id: number) => {
+  useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews]);
+  
+  // Сбрасываем флаг загрузки данных при смене пользователя
+  useEffect(() => {
+    if (session?.user?.email) {
+      dataFetchedRef.current = false;
+    }
+  }, [session?.user?.email]);
+  
+  // Мемоизированная функция для одобрения отзыва
+  const handleApprove = useCallback(async (id: number) => {
     try {
       const response = await fetch(`/api/admin/reviews/${id}/approve`, {
         method: 'PATCH',
@@ -88,15 +110,16 @@ export default function AdminReviewsPage() {
       }
       
       // Обновляем состояние после успешного одобрения
-      setReviews(reviews.map(review => 
+      setReviews(prevReviews => prevReviews.map(review => 
         review.id === id ? { ...review, isApproved: true } : review
       ));
     } catch (err: any) {
       alert(`Ошибка: ${err.message}`);
     }
-  };
+  }, []);
   
-  const handleDelete = async (id: number) => {
+  // Мемоизированная функция для удаления отзыва
+  const handleDelete = useCallback(async (id: number) => {
     if (!confirm('Вы уверены, что хотите удалить этот отзыв?')) {
       return;
     }
@@ -111,11 +134,11 @@ export default function AdminReviewsPage() {
       }
       
       // Обновляем состояние после успешного удаления
-      setReviews(reviews.filter(review => review.id !== id));
+      setReviews(prevReviews => prevReviews.filter(review => review.id !== id));
     } catch (err: any) {
       alert(`Ошибка: ${err.message}`);
     }
-  };
+  }, []);
   
   const toggleExpandReview = (id: number) => {
     setExpandedReviewId(expandedReviewId === id ? null : id);
@@ -290,7 +313,7 @@ export default function AdminReviewsPage() {
                       {!review.isApproved && (
                         <button
                           onClick={() => handleApprove(review.id)}
-                          className="inline-flex items-center p-1.5 rounded-full bg-green-100 text-green-800 w-8 h-8 justify-center hover:bg-green-200 cursor-pointer"
+                          className="inline-flex items-center p-1.5 rounded-full text-green-800 w-8 h-8 justify-center cursor-pointer"
                           title="Одобрить отзыв"
                         >
                           <CheckIcon className="h-4 w-4" />
@@ -299,7 +322,7 @@ export default function AdminReviewsPage() {
                       
                       <button
                         onClick={() => handleDelete(review.id)}
-                        className="inline-flex items-center p-1.5 rounded-full bg-red-100 text-red-800 w-8 h-8 justify-center hover:bg-red-200 cursor-pointer"
+                        className="inline-flex items-center p-1.5 rounded-full text-red-800 w-8 h-8 justify-center cursor-pointer"
                         title="Удалить отзыв"
                       >
                         <TrashIcon className="h-4 w-4" />
