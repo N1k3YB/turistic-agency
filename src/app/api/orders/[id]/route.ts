@@ -5,9 +5,12 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 
 // GET - получить детали конкретного заказа
 export async function GET(
-  request: Request,
+  req: Request,
   { params }: { params: { id: string } }
 ) {
+  const { id: orderIdParam } = await params;
+  const orderId = parseInt(orderIdParam);
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -15,8 +18,6 @@ export async function GET(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const orderId = parseInt(params.id);
-    
     if (isNaN(orderId)) {
       return new NextResponse("Некорректный ID заказа", { status: 400 });
     }
@@ -66,6 +67,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const { id: orderIdParam } = await params;
+  const orderId = parseInt(orderIdParam);
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -73,8 +77,6 @@ export async function PATCH(
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const orderId = parseInt(params.id);
-    
     if (isNaN(orderId)) {
       return new NextResponse("Некорректный ID заказа", { status: 400 });
     }
@@ -145,4 +147,14 @@ export async function PATCH(
     console.error("[ORDERS_PATCH]", error);
     return new NextResponse("Internal error", { status: 500 });
   }
+}
+
+export async function PUT(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const { id: orderIdParam } = await params;
+  const orderId = parseInt(orderIdParam);
+
+  // ... existing code ...
 } 

@@ -20,7 +20,8 @@ export async function GET(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const id = parseInt(await params.id);
+  const { id: idParam } = await params;
+  const id = parseInt(idParam);
   
   if (isNaN(id) || id <= 0) {
     return NextResponse.json(
@@ -74,7 +75,8 @@ export async function PUT(
     );
   }
   
-  const id = parseInt(await params?.id);
+  const { id: idParam } = await params;
+  const id = parseInt(idParam);
   
   if (isNaN(id) || id <= 0) {
     return NextResponse.json(
@@ -200,7 +202,8 @@ export async function DELETE(
     );
   }
   
-  const id = parseInt(await params.id);
+  const { id: idParam } = await params;
+  const id = parseInt(idParam);
   
   if (isNaN(id) || id <= 0) {
     return NextResponse.json(

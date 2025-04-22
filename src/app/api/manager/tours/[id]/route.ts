@@ -56,7 +56,8 @@ export async function GET(
     );
   }
   
-  const id = parseInt(params.id);
+  const { id: idParam } = await params;
+  const id = parseInt(idParam);
   
   if (isNaN(id) || id <= 0) {
     return NextResponse.json(
@@ -119,7 +120,8 @@ export async function PUT(
   }
   
   try {
-    const id = parseInt(params.id);
+    const { id: idParam } = await params;
+    const id = parseInt(idParam);
     
     // Проверка на валидность ID
     if (isNaN(id) || id <= 0) {
@@ -275,11 +277,12 @@ export async function DELETE(
     );
   }
   
-  const id = parseInt(params.id);
+  const { id: idParam } = await params;
+  const id = parseInt(idParam);
   console.log(`Запрос на удаление тура с ID: ${id}`);
   
   if (isNaN(id) || id <= 0) {
-    console.warn(`Попытка удаления тура с некорректным ID: ${params.id}`);
+    console.warn(`Попытка удаления тура с некорректным ID: ${idParam}`);
     return NextResponse.json(
       { error: 'Некорректный ID тура' }, 
       { status: 400 }

@@ -8,6 +8,9 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { id: ticketIdParam } = await params;
+  const ticketId = parseInt(ticketIdParam);
+
   try {
     const session = await getServerSession(authOptions);
     
@@ -15,8 +18,6 @@ export async function GET(
       return NextResponse.json({ error: "Необходима авторизация" }, { status: 401 });
     }
 
-    const ticketId = parseInt(params.id);
-    
     if (isNaN(ticketId)) {
       return NextResponse.json({ error: "Неверный формат ID" }, { status: 400 });
     }
@@ -57,6 +58,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const { id: ticketIdParam } = await params;
+  const ticketId = parseInt(ticketIdParam, 10);
+
   try {
     const session = await getServerSession(authOptions);
     
@@ -65,8 +69,6 @@ export async function PATCH(
       return NextResponse.json({ error: "Необходима авторизация" }, { status: 401 });
     }
 
-    const ticketId = parseInt(params.id, 10);
-    
     if (isNaN(ticketId)) {
       return NextResponse.json({ error: "Некорректный ID тикета" }, { status: 400 });
     }

@@ -24,7 +24,7 @@ export async function DELETE(
     );
   }
   
-  const id = params.id;
+  const { id } = await params;
   
   if (!id || isNaN(parseInt(id))) {
     return NextResponse.json(
@@ -61,4 +61,13 @@ export async function DELETE(
       { status: 500 }
     );
   }
+}
+
+export async function GET(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const { id } = await params;
+  
+  // ... existing code ...
 } 

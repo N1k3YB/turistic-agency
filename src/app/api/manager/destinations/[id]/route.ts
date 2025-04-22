@@ -37,7 +37,8 @@ export async function GET(
     );
   }
   
-  const id = parseInt(params.id);
+  const { id: idParam } = await params;
+  const id = parseInt(idParam);
   
   if (isNaN(id) || id <= 0) {
     return NextResponse.json(
@@ -96,17 +97,17 @@ export async function PUT(
     );
   }
   
+  const { id: idParam } = await params;
+  const id = parseInt(idParam);
+  
+  if (isNaN(id) || id <= 0) {
+    return NextResponse.json(
+      { error: 'Некорректный ID направления' }, 
+      { status: 400 }
+    );
+  }
+  
   try {
-    const id = parseInt(params.id);
-    
-    // Проверка на валидность ID
-    if (isNaN(id) || id <= 0) {
-      return NextResponse.json(
-        { error: 'Некорректный ID направления' }, 
-        { status: 400 }
-      );
-    }
-    
     const body = await req.json();
     console.log('Полученные данные для обновления направления:', body);
     
@@ -222,11 +223,12 @@ export async function DELETE(
     );
   }
   
-  const id = parseInt(params.id);
+  const { id: idParam } = await params;
+  const id = parseInt(idParam);
   console.log(`Запрос на удаление направления с ID: ${id}`);
   
   if (isNaN(id) || id <= 0) {
-    console.warn(`Попытка удаления направления с некорректным ID: ${params.id}`);
+    console.warn(`Попытка удаления направления с некорректным ID: ${idParam}`);
     return NextResponse.json(
       { error: 'Некорректный ID направления' }, 
       { status: 400 }
